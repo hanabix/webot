@@ -9,7 +9,7 @@ object Main {
     sys.addShutdownHook(Console.err.println("Chrome Service Stopping..."))
     sys.addShutdownHook(service.stop())
     val url = service.getUrl.toString
-    sys.props.addOne("wbot.chrome.service.url" -> url)
+    sys.props.addOne("webdriver.remote.server" -> url)
     Console.err.println(s"Chrome Service Started At: $url")
     ammonite.Main.main(args)
   }
