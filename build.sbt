@@ -5,8 +5,11 @@ lazy val root = (project in file(".")).settings(
   scalaVersion := "2.13.6",
   scalafmtOnCompile := true,
   scalacOptions += "-deprecation",
+  resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
     "org.seleniumhq.selenium" % "selenium-java" % "4.0.0-beta-3",
-    "com.lihaoyi" % "ammonite" % "2.4.0" cross CrossVersion.full
+    "com.lihaoyi" % "ammonite" % "2.4.0" cross CrossVersion.full,
+    "org.scalactic" %% "scalactic" % "3.2.9",
+    "org.scalatest" %% "scalatest" % "3.2.9" % "test"
   )
 )

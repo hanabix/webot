@@ -1,4 +1,4 @@
-package webot
+package com.github.zhongl.webot
 
 import org.openqa.selenium.chrome.ChromeDriverService
 
