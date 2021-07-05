@@ -10,12 +10,12 @@ package object traversal {
   object Node {
     def leaf[A](a: A): Node[A] = Leaf(a)
 
-    def branch[A](nodes: List[Node[A]]): Node[A] = Branch(nodes)
+    def branch[A](nodes: Node[A]*): Node[A] = Branch(nodes.toList)
 
     private object Restored {
       def unapply[A](node: Node[A]): Option[Node[A]] = node match {
         case Branch(dark, light) => Some(Branch(light.reverse ::: dark, Nil))
-        case _                   => None
+        case _                   => throw new IllegalStateException("Never reach here")
       }
     }
 
