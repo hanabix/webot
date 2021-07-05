@@ -1,10 +1,9 @@
-package com.github.zhongl.webot.traversal
+package com.github.zhongl.webot.ast
 
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalamock.scalatest.MockFactory
-import Node._
 
-class packageTest extends AnyWordSpec with MockFactory {
+class AstSpec extends AnyWordSpec with MockFactory {
   implicit val handle = mockFunction[Int, React[Int]]
 
   "A leaf" should {
@@ -62,9 +61,10 @@ class packageTest extends AnyWordSpec with MockFactory {
       }
 
       "be retried" in {
-        handle.expects(0).returns(Retry(leaf(1))).once()
+        handle.expects(0).returns(Retry(leaf(2))).once()
         handle.expects(0).returns(Continue).once()
-        handle.expects(1).returns(Continue).twice()
+        handle.expects(1).returns(Continue).once()
+        handle.expects(2).returns(Continue).once()
 
         branch(leaf(0), leaf(1)).traverse
       }
