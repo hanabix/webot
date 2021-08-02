@@ -40,7 +40,7 @@ package object webot {
 
   def output[F[_]: Functor: Foldable, A: Monoid](fa: F[A]): Unit = fa.map(println).fold
 
-  def output(value: String): Unit = println(value)
+  def output(values: Any*): Unit = println(values.mkString(", "))
 
   def explore(urls: NonEmptyList[String]): ControlOr[Unit] = Control.explore(urls.head, urls.tail).asLeft
 
