@@ -37,7 +37,7 @@ package object webot {
 
   def output(value: String): Unit = println(value)
 
-  def explore(urls: NonEmptyList[String]): ControlOr[Unit] = Control.explore(urls).asLeft
+  def explore(urls: NonEmptyList[String]): ControlOr[Unit] = Control.explore(urls.head, urls.tail).asLeft
 
   def explore(url: String): ControlOr[Unit] = explore(NonEmptyList.one(url))
 
