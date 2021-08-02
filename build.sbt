@@ -1,6 +1,5 @@
 lazy val root = (project in file(".")).settings(
   name := "webot",
-  version := "0.1",
   organization := "com.github.zhongl",
   scalaVersion := "2.13.6",
   scalafmtOnCompile := true,
