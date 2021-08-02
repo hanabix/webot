@@ -26,8 +26,6 @@ class ControlSpec extends AnyWordSpec with MockFactory {
       "complain exceed max retring" in {
         (compiled.apply _).expects(Option("https://example.com")).returning(retry(1)).once()
         (compiled.apply _).expects(Option("https://example.com")).returning(retry(1)).once()
-        // (compiled.apply _).expects(Option("https://example.com")).returning(retry(0)).once()
-        // (compiled.apply _).expects(Option("https://example.com")).returning(done).never()
         Control.runner(compiled)("https://example.com")
       }
 
