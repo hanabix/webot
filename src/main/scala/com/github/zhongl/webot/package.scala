@@ -45,10 +45,12 @@ package object webot {
 
   def one[A](a: A): ControlOr[NonEmptyList[A]] = NonEmptyList.one(a).asRight
 
-  def repeat[A]: ControlOr[A] = Control.repeat.asLeft
+  def repeat: ControlOr[Unit] = Control.repeat.asLeft
+
+  def retry: ControlOr[Unit] = Control.retry.asLeft
 
   def open(url: String)(df: Definition)(implicit runtime: Runtime): Unit = {
-    runtime(df) { Control.run(List(Option(url)), _) }
+    runtime(df) { Control.runner(_)(url) }
   }
 
 }

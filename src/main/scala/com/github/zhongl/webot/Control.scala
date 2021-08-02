@@ -3,6 +3,7 @@ package com.github.zhongl.webot
 import cats.data.NonEmptyList
 
 sealed trait Control
+
 object Control {
 
   final private[webot] case class Complain private (error: String) extends Control
@@ -15,18 +16,21 @@ object Control {
   def repeat: Control = Repeat
   def retry: Control = Retry
 
-  @scala.annotation.tailrec
-  final def run(urls: List[Option[String]], c: Compiled): Unit = urls match {
-    case url :: rest =>
-      c(url) match {
-        case Left(Repeat)          => run(Option.empty :: rest, c)
-        case Left(Retry)           => run(url :: rest, c)
-        case Left(Explore(urls))   => run(urls.map(Option(_)).toList ::: rest, c)
-        case Left(Complain(error)) => Console.err.println(error); run(rest, c)
-        case Right(_)              => run(rest, c)
-      }
+  def runner(c: Compiled): String => Unit = { url =>
+    @scala.annotation.tailrec
+    def rec(urls: List[Option[String]]): Unit = urls match {
+      case url :: rest =>
+        c(url) match {
+          case Left(Repeat)          => rec(Option.empty :: rest)
+          case Left(Retry)           => rec(url :: rest)
+          case Left(Explore(urls))   => rec(urls.map(Option(_)).toList ::: rest)
+          case Left(Complain(error)) => Console.err.println(error); rec(rest)
+          case Right(_)              => rec(rest)
+        }
 
-    case Nil =>
+      case Nil =>
+    }
+
+    rec(List(Option(url)))
   }
-
 }
