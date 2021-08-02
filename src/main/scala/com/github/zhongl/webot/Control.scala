@@ -9,7 +9,7 @@ object Control {
   final private[webot] case class Retry(max: Int)                                   extends Control
   final private[webot] case object Repeat                                           extends Control
 
-  final private[webot] case class Context(url: Option[String], Control: Control)
+  final private[webot] case class Context(url: Option[String], control: Control)
 
   def complain(error: String): Control                        = Complain(error)
   def explore(url: String, more: List[String] = Nil): Control = Explore(url, more)
