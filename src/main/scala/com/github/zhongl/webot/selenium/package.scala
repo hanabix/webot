@@ -44,7 +44,7 @@ package object selenium {
 
           case Multiple(select, op) =>
             val cond = ExpectedConditions.visibilityOfAllElementsLocatedBy(By.cssSelector(select))
-            val ee = wd.find(cond).flatMap(_.asScala.toList.toNel.toRight(complain("Never be here")))
+            val ee   = wd.find(cond).flatMap(_.asScala.toList.toNel.toRight(complain("Never be here")))
             apply0(ee).apply(op).asInstanceOf[ControlOr[A]]
         }
 

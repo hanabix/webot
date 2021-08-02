@@ -4,9 +4,10 @@ import cats.syntax.either._
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.tagobjects.Slow
 
 class ControlSpec extends AnyWordSpec with MockFactory {
-  val compiled = mock[Compiled]
+  val compiled              = mock[Compiled]
   val done: ControlOr[Unit] = ().asRight
 
   "Control runner" when {
@@ -17,8 +18,16 @@ class ControlSpec extends AnyWordSpec with MockFactory {
       }
 
       "retry" in {
-        (compiled.apply _).expects(Option("https://example.com")).returning(retry).once()
+        (compiled.apply _).expects(Option("https://example.com")).returning(retry(1)).once()
         (compiled.apply _).expects(Option("https://example.com")).returning(done).once()
+        Control.runner(compiled)("https://example.com")
+      }
+
+      "complain exceed max retring" in {
+        (compiled.apply _).expects(Option("https://example.com")).returning(retry(1)).once()
+        (compiled.apply _).expects(Option("https://example.com")).returning(retry(1)).once()
+        // (compiled.apply _).expects(Option("https://example.com")).returning(retry(0)).once()
+        // (compiled.apply _).expects(Option("https://example.com")).returning(done).never()
         Control.runner(compiled)("https://example.com")
       }
 
