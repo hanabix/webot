@@ -13,16 +13,15 @@ import java.time._
 import java.util.function.{Function => JF}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import Expression._
+import Operator._
+import Control._
 
 package object selenium {
 
-  import Expression._
-  import Operator._
-  import Control._
-
   private implicit final class WaitOps(val wd: WebDriver) extends AnyVal {
     def find[F[_], A](cond: JF[WebDriver, F[A]])(implicit d: Duration): ControlOr[F[A]] = {
-      Try(new WebDriverWait(wd, d).until(cond)).toEither.left.map[Control](t => Control.complain(t.getMessage))
+      Try(new WebDriverWait(wd, d).until(cond)).toEither.left.map[Control](t => complain(t.getMessage))
     }
   }
 
@@ -32,10 +31,10 @@ package object selenium {
       def interpreter(wd: WebDriver)(implicit d: Duration): (Expression ~> ControlOr) = new (Expression ~> ControlOr) {
 
         final def apply[A](fa: Expression[A]): ControlOr[A] = fa match {
-          case And(a: Expression[A], g: (A => ControlOr[A]) @ unchecked) =>
+          case And(a: Expression[A], g: (A => ControlOr[A]) @unchecked) =>
             apply(a).flatMap(g)
 
-          case Or(a: Expression[A], g: (() => ControlOr[A]) @ unchecked) =>
+          case Or(a: Expression[A], g: (() => ControlOr[A]) @unchecked) =>
             apply(a).orElse(g())
 
           case Single(select, op) =>
@@ -45,7 +44,7 @@ package object selenium {
 
           case Multiple(select, op) =>
             val cond = ExpectedConditions.visibilityOfAllElementsLocatedBy(By.cssSelector(select))
-            val ee = wd.find(cond).flatMap(_.asScala.toList.toNel.toRight[Control](complain("Never be here")))
+            val ee = wd.find(cond).flatMap(_.asScala.toList.toNel.toRight(complain("Never be here")))
             apply0(ee).apply(op).asInstanceOf[ControlOr[A]]
         }
 
@@ -55,7 +54,7 @@ package object selenium {
           case Attribute(name) =>
             found.flatMap {
               _.map { e =>
-                Option(e.getAttribute(name)).toRight[Control](Complain(s"Missing attribute: $name"))
+                Option(e.getAttribute(name)).toRight(complain(s"Missing attribute: $name"))
               }.sequence
             }
 

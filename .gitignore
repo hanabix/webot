@@ -1,7 +1,8 @@
-.idea
-.bsp
-.metals
-.vscode
-.bloop
+.idea/
+.bsp/
+.metals/
+.vscode/
+.bloop/
+.ammonite/
 metals.sbt
 target/

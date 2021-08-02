@@ -5,8 +5,8 @@ import cats.data.NonEmptyList
 sealed trait Control
 object Control {
 
-  final private[webot] case class Complain(error: String) extends Control
-  final private[webot] case class Explore(urls: NonEmptyList[String]) extends Control
+  final private[webot] case class Complain private (error: String) extends Control
+  final private[webot] case class Explore private (urls: NonEmptyList[String]) extends Control
   final private[webot] case object Repeat extends Control
   final private[webot] case object Retry extends Control
 

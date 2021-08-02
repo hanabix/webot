@@ -15,13 +15,12 @@ package object webot {
   type Definition = PartialFunction[String, Free[Expression, Unit]]
   type Runtime = Definition => (Compiled => Unit) => Unit
 
-  implicit final class SelectOps(val select: String) extends AnyVal {
-    def >?>[A](op: Operator[A]): Free[Expression, Id[A]] = Free.liftF[Expression, Id[A]](Expression.single(select, op))
-    def >*>[A](op: Operator[A]): Free[Expression, NonEmptyList[A]] =
-      Free.liftF[Expression, NonEmptyList[A]](Expression.multiple(select, op))
+  implicit final class SelectSyntax(val select: String) extends AnyVal {
+    def >?>[A](op: Operator[A]): Free[Expression, Id[A]] = Free.liftF(Expression.single(select, op))
+    def >*>[A](op: Operator[A]): Free[Expression, NonEmptyList[A]] = Free.liftF(Expression.multiple(select, op))
   }
 
-  implicit final class LogicalOps[A](val f: Free[Expression, A]) extends AnyVal {
+  implicit final class LogicalSyntax[A](val f: Free[Expression, A]) extends AnyVal {
     def &&[B](g: A => B): Free[Expression, A] = f.mapK(new (Expression ~> Expression) {
       def apply[C](sc: Expression[C]): Expression[C] = Expression.and(sc, c => g(c.asInstanceOf[A]))
     })
@@ -40,7 +39,7 @@ package object webot {
 
   def explore(urls: NonEmptyList[String]): ControlOr[Unit] = Control.explore(urls).asLeft
 
-  def explore(url: String): ControlOr[Unit] = this.explore(NonEmptyList.one(url))
+  def explore(url: String): ControlOr[Unit] = explore(NonEmptyList.one(url))
 
   def default[A](a: A): ControlOr[A] = a.asRight
 

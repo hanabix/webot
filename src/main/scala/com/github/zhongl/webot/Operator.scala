@@ -3,8 +3,8 @@ package com.github.zhongl.webot
 sealed trait Operator[+A]
 object Operator {
 
-  final private[webot] case class Input(value: String) extends Operator[Unit]
-  final private[webot] case class Attribute(name: String) extends Operator[String]
+  final private[webot] case class Input private (value: String) extends Operator[Unit]
+  final private[webot] case class Attribute private (name: String) extends Operator[String]
   final private[webot] case object Text extends Operator[String]
 
   def input(value: String): Operator[Unit] = Input(value)
