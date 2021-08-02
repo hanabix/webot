@@ -13,11 +13,16 @@ package object webot {
   type ControlOr[A] = Either[Control, A]
   type Compiled     = Option[String] => ControlOr[Unit]
   type Definition   = PartialFunction[String, Free[Expression, Unit]]
-  type Runtime      = Definition => (Compiled => Unit) => Unit
+  type Runtime      = (String => Free[Expression, Unit]) => (Compiled => Unit) => Unit
 
   implicit final class SelectSyntax(val select: String) extends AnyVal {
     def >?>[A](op: Operator[A]): Free[Expression, Id[A]]           = Free.liftF(Expression.single(select, op))
     def >*>[A](op: Operator[A]): Free[Expression, NonEmptyList[A]] = Free.liftF(Expression.multiple(select, op))
+  }
+
+  implicit final class OpenSyntax(val url: String) extends AnyVal {
+    def ~>>(df: Definition)(implicit runtime: Runtime): Unit             = runtime(df) { Control.runner(_)(url) }
+    def =>>(df: Free[Expression, Unit])(implicit runtime: Runtime): Unit = runtime(_ => df) { Control.runner(_)(url) }
   }
 
   implicit final class LogicalSyntax[A](val f: Free[Expression, A]) extends AnyVal {
@@ -48,9 +53,5 @@ package object webot {
   def repeat: ControlOr[Unit] = Control.repeat.asLeft
 
   def retry(max: Int): ControlOr[Unit] = Control.retry(max).asLeft
-
-  def open(url: String)(df: Definition)(implicit runtime: Runtime): Unit = {
-    runtime(df) { Control.runner(_)(url) }
-  }
 
 }
