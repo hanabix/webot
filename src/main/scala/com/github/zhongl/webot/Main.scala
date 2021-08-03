@@ -35,7 +35,7 @@ object Main {
           silent = cfg.opts.silent,
           watch = cfg.opts.watch,
           bsp = Flag(false),
-          home = os.Path(System.getProperty("user.home"))/".webot",
+          home = os.Path(System.getProperty("user.home")) / ".webot",
           color = cfg.opts.color,
           thin = Flag(true),
           help = Flag(false)
