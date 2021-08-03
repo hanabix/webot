@@ -59,7 +59,7 @@ object Main {
   }
 
   private def config(cfg: Cfg) = {
-    val version = Option(getClass().getPackage().getImplementationVersion()).getOrElse("0.1.0") // Caution !!!
+    val version = getClass().getPackage().getImplementationVersion()
     val core = Config.Core(
       noDefaultPredef = Flag(false),
       silent = cfg.opts.silent,

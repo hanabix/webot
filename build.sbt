@@ -13,14 +13,13 @@ lazy val root = (project in file(".")).settings(
       url("https://github.com/zhongl")
     )
   ),
-  scalaVersion := "2.13.6",
+  scalaVersion := "2.13.5",
   scalafmtOnCompile := true,
   scalacOptions += "-deprecation",
   resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
     "org.seleniumhq.selenium" % "selenium-java"      % "4.0.0-beta-3",
     "com.lihaoyi"             % "ammonite"           % "2.4.0" cross CrossVersion.full,
-    "org.typelevel"          %% "cats-core"          % "2.6.1",
     "org.typelevel"          %% "cats-free"          % "2.6.1",
     "org.scalactic"          %% "scalactic"          % "3.2.9",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.9" % Test,
