@@ -1,8 +1,0 @@
-{
-  "repositories": [
-    "central"
-  ],
-  "dependencies": [
-    "com.github.zhongl:webot_2.13:latest.release"
-  ]
-}
