@@ -67,7 +67,7 @@ object Main {
       bsp = Flag(false),
       home = os.Path(System.getProperty("user.home")) / ".webot",
       color = cfg.opts.color,
-      thin = Flag(true),
+      thin = Flag(false),
       help = Flag(false)
     )
     val predef = Config.Predef(
