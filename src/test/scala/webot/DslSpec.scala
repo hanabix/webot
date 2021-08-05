@@ -10,20 +10,19 @@ class DslSpec extends AnyWordSpec with MockFactory {
     "single page" should {
       "get text from a subject" in {
 
-        // implicit val proxy = new Proxy().setSocksProxy("127.0.0.1:1080")
+        implicit val proxy = new Proxy().setSocksProxy("127.0.0.1:1080")
 
         val df = for {
-          projects <- a("span.title-content-title") get_if_present text
-          //  {
-          //   for {
-          //     name  <- a("h1.h3.lh-condensed") get text
-          //     url   <- a("h1.h3.lh-condensed > a") get attr("href")
-          //     stars <- a("div.f6.color-text-secondary.mt-2 > a") get text
-          //   } yield (name, url, stars)
-          // }
+          projects <- all("article.Box-row") get {
+            for {
+              name  <- a("h1.h3.lh-condensed") get text
+              url   <- a("h1.h3.lh-condensed > a") get attr("href")
+              stars <- a("div.f6.color-text-secondary.mt-2 > a") get text
+            } yield (name, url, stars)
+          }
         } yield output(projects)
 
-        open("https://baidu.com") apply { df }
+        open("https://github.com/trending") apply { df }
 
       }
     }

@@ -99,7 +99,7 @@ package object selenium {
       }
     }
 
-    def execEx(expr: Expression[_]): ControlOr[_] = expr.foldMap(interpreter(this))
+    def execEx[A](expr: Expression[A]): ControlOr[A] = expr.foldMap(interpreter(this))
   }
 
   private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
@@ -111,9 +111,19 @@ package object selenium {
       case Focus.list(f) => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
     }
 
+    private def get[A](tp: Type, descriptor: String, ex: Expression[_]): ControlOr[A] = tp match {
+      case Focus.id(f)   => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.opt(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.nel(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.list(f) => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+    }
+
     final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
       case SubjectGet(descriptor, op: Operator[_], tp) =>
         get(tp, descriptor, op)
+
+      case SubjectGet(descriptor, ex: Expression[_] @unchecked, tp) =>
+        get(tp, descriptor, ex)
 
       case SubjectApply(descriptor, procedure, IsId()) =>
         handler
