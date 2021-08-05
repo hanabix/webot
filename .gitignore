@@ -6,3 +6,4 @@
 .ammonite/
 metals.sbt
 target/
+*.worksheet.sc
