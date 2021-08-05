@@ -21,7 +21,7 @@ import cats.evidence.Is
 
 package object selenium {
 
-  implicit final def webDriverRuntime(implicit timeout: Duration = Duration.ofSeconds(3), proxy: Option[String] = None): Runtime[Handler] = df =>
+  implicit final def webDriverRuntime(implicit timeout: Duration = Duration.ofSeconds(3), proxy: Option[Proxy] = None): Runtime[Handler] = df =>
     run => {
 
       def driver(options: ChromeOptions): WebDriver = {
@@ -34,8 +34,8 @@ package object selenium {
 
       val options = new ChromeOptions()
 
-      proxy.foreach { s =>
-        options.setCapability("proxy", new Proxy().setSocksProxy(s))
+      proxy.foreach { p =>
+        options.setCapability("proxy", p)
       }
 
       val rwd = driver(options)
@@ -82,59 +82,38 @@ package object selenium {
       Try(wdw.until(cond.asJava)).toOption.getOrElse(Nil)
     }
 
-    def exec[A](expr: Any): ControlOr[A] = expr match {
-      case op: Operator[A] @unchecked   => execOp(op)
-      case ex: Expression[A] @unchecked => execEx(ex)
+    def exec(expr: Any): ControlOr[_] = expr match {
+      case op: Operator[_] @unchecked   => execOp(op).asRight
+      case ex: Expression[_] @unchecked => execEx(ex)
       case unknown                      => throw new UnsupportedOperationException(unknown.toString())
     }
 
-    private def execOp[A](op: Operator[A]): ControlOr[A] = {
-      def cast(a: Any): ControlOr[A] = a.asInstanceOf[A].asRight
-
+    def execOp[A](op: Operator[A]): A = {
       if (context.isEmpty) throw new IllegalStateException("Should not exec a handler without context")
       val we = context.get
       op match {
-        case Attribute(name) => Option(we.getAttribute(name).asInstanceOf[A]).toRight(complain(s"Missing attribute $name"))
-        case Text            => cast(we.getText())
-        case Input(value)    => cast(we.sendKeys(value))
-        case Hover           => cast(new Actions(wd).moveToElement(we).build.perform())
+        case Attribute(name) => we.getAttribute(name)
+        case Text            => we.getText()
+        case Input(value)    => we.sendKeys(value)
+        case Hover           => new Actions(wd).moveToElement(we).build.perform()
       }
     }
 
-    private def execEx[A](expr: Expression[A]): ControlOr[A] = expr.foldMap(interpreter(this))
+    def execEx(expr: Expression[_]): ControlOr[_] = expr.foldMap(interpreter(this))
   }
 
-  private def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
+  private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
+
+    private def get[A](tp: Type, descriptor: String, op: Operator[_]): ControlOr[A] = tp match {
+      case Focus.id(f)   => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.opt(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.nel(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.list(f) => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
+    }
 
     final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
-      case SubjectGet(descriptor, expression, IsId()) =>
-        handler
-          .a(descriptor)
-          .map(_.exec(expression))
-          .toRight(complain(s"Missing $descriptor"))
-          .asInstanceOf[ControlOr[A]]
-
-      case SubjectGet(descriptor, expression, IsOption()) =>
-        handler
-          .a(descriptor)
-          .map(_.exec(expression))
-          .asRight
-          .asInstanceOf[ControlOr[A]]
-
-      case SubjectGet(descriptor, expression, IsNonEmptyList()) =>
-        handler
-          .all(descriptor)
-          .map(_.exec(expression))
-          .toNel
-          .toRight(complain(s"Missing $descriptor"))
-          .asInstanceOf[ControlOr[A]]
-
-      case SubjectGet(descriptor, expression, IsList()) =>
-        handler
-          .all(descriptor)
-          .map(_.exec(expression))
-          .asRight
-          .asInstanceOf[ControlOr[A]]
+      case SubjectGet(descriptor, op: Operator[_], tp) =>
+        get(tp, descriptor, op)
 
       case SubjectApply(descriptor, procedure, IsId()) =>
         handler
@@ -171,12 +150,42 @@ package object selenium {
 
   }
 
+  trait Extractor[A, B] {
+    def unapply(a: A): Option[B]
+  }
+
+  type Focus[F[_]] = String => Handler => Nested[ControlOr, F, Handler]
+  object Focus {
+    private def focus[F[_]: Functor, A >: F[_]: TypeTag](f: Focus[F]): Extractor[Type, Focus[F]] =
+      new Extractor[Type, Focus[F]] {
+        def unapply(a: Type) = {
+          if (typeOf[A] <:< a) Some(f) else None
+        }
+      }
+
+    val id = focus[Id, Id[_]] { d => h =>
+      Nested(h.a(d).map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing descriptor: $d")))
+    }
+
+    val opt = focus[Option, Option[_]] { d => h =>
+      Nested(h.a(d).asRight)
+    }
+
+    val nel = focus[NonEmptyList, NonEmptyList[_]] { d => h =>
+      Nested(h.all(d).toNel.toRight(complain(s"Missing descriptor: $d")))
+    }
+
+    val list = focus[List, List[_]] { d => h =>
+      Nested(h.all(d).asRight)
+    }
+  }
+
   private trait Predictor {
     def unapply(tt: Type): Boolean
   }
 
   private def is[T: TypeTag] = new Predictor {
-    def unapply(t: Type): Boolean = t =:= typeOf[T]
+    def unapply(t: Type): Boolean = t <:< typeOf[T]
   }
 
   private val IsId           = is[Id[_]]
