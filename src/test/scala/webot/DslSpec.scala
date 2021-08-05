@@ -12,17 +12,17 @@ class DslSpec extends AnyWordSpec with MockFactory {
 
         implicit val proxy = new Proxy().setSocksProxy("127.0.0.1:1080")
 
-        val df = for {
-          projects <- all("article.Box-row") get {
-            for {
-              name  <- a("h1.h3.lh-condensed") get text
-              url   <- a("h1.h3.lh-condensed > a") get attr("href")
-              stars <- a("div.f6.color-text-secondary.mt-2 > a") get text
-            } yield (name, url, stars)
-          }
-        } yield output(projects)
-
-        open("https://github.com/trending") apply { df }
+        open("https://github.com/trending") apply {
+          for {
+            projects <- a("article.Box-row") get {
+              for {
+                name  <- a("h1.h3.lh-condensed") get text
+                url   <- a("h1.h3.lh-condensed > a") get attr("href")
+                stars <- a("div.f6.color-text-secondary.mt-2 > a[href$=\"stargazers\"]") get text
+              } yield (name, url, stars)
+            }
+          } yield println(projects)
+        }
 
       }
     }

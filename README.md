@@ -28,7 +28,7 @@ open("https://github.com/trending") apply {
         name    <- a("h1.h3.lh-condensed") get text as [String]
         url     <- a("h1.h3.lh-condensed > a") get attr("href") as [String]
         stars   <- a("div.f6.color-text-secondary.mt-2 > a") get text as [Int]
-        contrbs <- all("div.f6.color-text-secondary.mt-2 > span > a") get {
+        contrbs <- all("div.f6.color-text-secondary.mt-2 > span.d-inline-block.mr-3 > a") get {
           for {
             _    <- hover
             name <- a("div.Popover-message div.overflow-hidden > a.Link--primary") get text as [String]

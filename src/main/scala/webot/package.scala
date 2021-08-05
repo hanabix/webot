@@ -26,10 +26,10 @@ package object webot {
   final private[webot] case object Hover                  extends Operator[Unit]
 
   sealed trait ExpressionA[A]
-  final private[webot] case class SubjectGet[F[_], G[_], A](descriptor: String, expr: F[A], tp: Type)   extends ExpressionA[G[A]]
-  final private[webot] case class SubjectApply[F[_], G[_]](descriptor: String, proc: F[Unit], tp: Type) extends ExpressionA[Unit]
+  final private[webot] case class SubjectGet[F[_], G[_], A](descriptor: Option[String], expr: F[A], tp: Type)   extends ExpressionA[G[A]]
+  final private[webot] case class SubjectApply[F[_], G[_]](descriptor: Option[String], proc: F[Unit], tp: Type) extends ExpressionA[Unit]
 
-  final class Subject[S[_], L[_], S_ >: S[_]: TypeTag, L_ >: L[_]: TypeTag](descriptor: String) {
+  final class Subject[S[_], L[_], S_ >: S[_]: TypeTag, L_ >: L[_]: TypeTag](descriptor: Option[String]) {
     def apply[H[_]](proc: H[Unit]): Procedure                 = Free.liftF[ExpressionA, Unit](SubjectApply(descriptor, proc, typeOf[S_]))
     def apply_if_present[H[_]](proc: H[Unit]): Procedure      = Free.liftF[ExpressionA, Unit](SubjectApply(descriptor, proc, typeOf[L_]))
     def get[H[_], A](expr: H[A]): Expression[S[A]]            = Free.liftF[ExpressionA, S[A]](SubjectGet(descriptor, expr, typeOf[S_]))
@@ -47,7 +47,7 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def a[A, B](descriptor: String): Subject[Id, Option, Id[_], Option[_]] = new Subject(descriptor)
+  def a(descriptor: String): Subject[Id, Option, Id[_], Option[_]] = new Subject(Option(descriptor))
 
   /** Get a [[Subject]] contains all elements by descriptor.
     *
@@ -58,7 +58,22 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def all[A, B](descriptor: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(descriptor)
+  def all(descriptor: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(Option(descriptor))
+
+  /** Get the [[Subject]] in current context.
+    *
+    * {{{
+    * all("a.link") get {
+    *   for {
+    *     _ <- it apply hover
+    *     n <- a("span.popup") get text
+    *   } yield
+    * }
+    * }}}
+    *
+    * @return
+    */
+  def it: Subject[Id, Id, Id[_], Id[_]] = new Subject(Option.empty)
 
   implicit final class AsOps[F[_], G[_]: Functor, A](val ffa: Free[F, G[String]]) {
 

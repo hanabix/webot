@@ -104,14 +104,14 @@ package object selenium {
 
   private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
 
-    private def get[A](tp: Type, descriptor: String, op: Operator[_]): ControlOr[A] = tp match {
+    private def exec[A](tp: Type, descriptor: Option[String], op: Operator[_]): ControlOr[A] = tp match {
       case Focus.id(f)   => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.opt(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.nel(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.list(f) => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
     }
 
-    private def get[A](tp: Type, descriptor: String, ex: Expression[_]): ControlOr[A] = tp match {
+    private def exec[A](tp: Type, descriptor: Option[String], ex: Expression[_]): ControlOr[A] = tp match {
       case Focus.id(f)   => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
       case Focus.opt(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
       case Focus.nel(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
@@ -120,39 +120,16 @@ package object selenium {
 
     final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
       case SubjectGet(descriptor, op: Operator[_], tp) =>
-        get(tp, descriptor, op)
+        exec(tp, descriptor, op)
 
       case SubjectGet(descriptor, ex: Expression[_] @unchecked, tp) =>
-        get(tp, descriptor, ex)
+        exec(tp, descriptor, ex)
 
-      case SubjectApply(descriptor, procedure, IsId()) =>
-        handler
-          .a(descriptor)
-          .map(_.exec(procedure))
-          .toRight(complain(s"Missing $descriptor"))
-          .asInstanceOf[ControlOr[A]]
+      case SubjectApply(descriptor, op: Operator[_], tp) =>
+        exec(tp, descriptor, op).map((_: Any) => ())
 
-      case SubjectApply(descriptor, procedure, IsOption()) =>
-        handler
-          .a(descriptor)
-          .map(_.exec(procedure))
-          .asRight
-          .asInstanceOf[ControlOr[A]]
-
-      case SubjectApply(descriptor, procedure, IsNonEmptyList()) =>
-        handler
-          .all(descriptor)
-          .map(_.exec(procedure))
-          .toNel
-          .toRight(complain(s"Missing $descriptor"))
-          .asInstanceOf[ControlOr[A]]
-
-      case SubjectApply(descriptor, procedure, IsList()) =>
-        handler
-          .all(descriptor)
-          .map(_.exec(procedure))
-          .asRight
-          .asInstanceOf[ControlOr[A]]
+      case SubjectApply(descriptor, ex: Expression[_] @unchecked, tp) =>
+        exec(tp, descriptor, ex).map((_: Any) => ())
 
       case unknown =>
         throw new UnsupportedOperationException(unknown.toString)
@@ -164,7 +141,7 @@ package object selenium {
     def unapply(a: A): Option[B]
   }
 
-  type Focus[F[_]] = String => Handler => Nested[ControlOr, F, Handler]
+  type Focus[F[_]] = Option[String] => Handler => Nested[ControlOr, F, Handler]
   object Focus {
     private def focus[F[_]: Functor, A >: F[_]: TypeTag](f: Focus[F]): Extractor[Type, Focus[F]] =
       new Extractor[Type, Focus[F]] {
@@ -174,33 +151,24 @@ package object selenium {
       }
 
     val id = focus[Id, Id[_]] { d => h =>
-      Nested(h.a(d).map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing descriptor: $d")))
+      val oh: Option[Handler] = d.flatMap(h.a).orElse(Option(h))
+      Nested(oh.map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing descriptor: $d")))
     }
 
     val opt = focus[Option, Option[_]] { d => h =>
-      Nested(h.a(d).asRight)
+      if (d.isEmpty) throw new IllegalStateException("Never be here")
+      Nested(h.a(d.get).asRight)
     }
 
     val nel = focus[NonEmptyList, NonEmptyList[_]] { d => h =>
-      Nested(h.all(d).toNel.toRight(complain(s"Missing descriptor: $d")))
+      if (d.isEmpty) throw new IllegalStateException("Never be here")
+      Nested(h.all(d.get).toNel.toRight(complain(s"Missing descriptor: $d")))
     }
 
     val list = focus[List, List[_]] { d => h =>
-      Nested(h.all(d).asRight)
+      if (d.isEmpty) throw new IllegalStateException("Never be here")
+      Nested(h.all(d.get).asRight)
     }
   }
-
-  private trait Predictor {
-    def unapply(tt: Type): Boolean
-  }
-
-  private def is[T: TypeTag] = new Predictor {
-    def unapply(t: Type): Boolean = t <:< typeOf[T]
-  }
-
-  private val IsId           = is[Id[_]]
-  private val IsOption       = is[Option[_]]
-  private val IsNonEmptyList = is[NonEmptyList[_]]
-  private val IsList         = is[List[_]]
 
 }
