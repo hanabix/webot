@@ -34,14 +34,13 @@ package object selenium {
 
       val options = new ChromeOptions()
 
-      proxy.foreach { p =>
-        options.setCapability("proxy", p)
-      }
+      proxy.foreach { p => options.setCapability("proxy", p) }
 
       val rwd = driver(options)
+
       try {
         val i = interpreter(new Handler(rwd, None, timeout))
-        run(mayBeUrl => {
+        run({ mayBeUrl =>
           mayBeUrl.map(_.toString).foreach(rwd.get)
           df(new URL(rwd.getCurrentUrl)).foldMap(i)
         })
@@ -51,7 +50,7 @@ package object selenium {
 
     }
 
-  final class Handler private[selenium] (wd: WebDriver, context: Option[WebElement], timeout: Duration) {
+  class Handler private[selenium] (wd: WebDriver, context: Option[WebElement], timeout: Duration) {
     import scala.jdk.FunctionConverters._
     import scala.jdk.CollectionConverters._
 
