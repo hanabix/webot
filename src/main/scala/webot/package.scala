@@ -55,9 +55,9 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def a(description: String): Subject[Id, Option, Id[_], Option[_]] = new Subject(Local(description))
+  def a(description: String): Subject[Id, Option, Id[_], Option[_]] = a(Local(description))
 
-  // def a(locator: Locator with HasDescription): Subject[Id, Option, Id[_], Option[_]] = new Subject(locator)
+  def a(locator: Locator with HasDescription): Subject[Id, Option, Id[_], Option[_]] = new Subject(locator)
 
   /** Get a [[Subject]] contains all elements by descriptor.
     *
@@ -68,9 +68,9 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def all(description: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(Local(description))
+  def all(description: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = all(Local(description))
 
-  // def all(locator: Locator with HasDescription): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(locator)
+  def all(locator: Locator with HasDescription): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(locator)
 
   /** Get the [[Subject]] in current context.
     *
@@ -97,18 +97,18 @@ package object webot {
     def as[B](implicit f: String => B): Free[F, G[B]] = ffa.map(_.map(f))
   }
 
-  // implicit final class LocatorOps(val sc: StringContext) extends AnyVal {
-  //   def g(args: Any*): String = {
-  //     val strings     = sc.parts.iterator
-  //     val expressions = args.iterator
-  //     var buf         = new StringBuilder(strings.next())
-  //     while (strings.hasNext) {
-  //       buf.append(expressions.next())
-  //       buf.append(strings.next())
-  //     }
-  //     buf.toString()
-  //   }
-  // }
+  implicit final class LocatorOps(val sc: StringContext) extends AnyVal {
+    def g(args: Any*): Global = {
+      val strings     = sc.parts.iterator
+      val expressions = args.iterator
+      var buf         = new StringBuilder(strings.next())
+      while (strings.hasNext) {
+        buf.append(expressions.next())
+        buf.append(strings.next())
+      }
+      Global(buf.toString())
+    }
+  }
 
   /** An [[Operator]] to get attribute by name from a [[Subject]].
     *

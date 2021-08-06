@@ -80,7 +80,7 @@ package object selenium {
 
       locator match {
         case Global(d) => Try(aWait(wd).until(cond(d).asJava)).toOption.getOrElse(Nil)
-        case Local(d) => Try(aWait(searchContext).until(cond(d).asJava)).toOption.getOrElse(Nil)
+        case Local(d)  => Try(aWait(searchContext).until(cond(d).asJava)).toOption.getOrElse(Nil)
       }
     }
 
@@ -91,7 +91,7 @@ package object selenium {
         case Attribute(name) => we.getAttribute(name)
         case Text            => we.getText()
         case Input(value)    => we.sendKeys(value)
-        case Hover           => new Actions(wd).moveToElement(we).build.perform()
+        case Hover           => new Actions(wd).moveToElement(we).perform()
       }
     }
 
@@ -148,7 +148,7 @@ package object selenium {
 
     val id = focus[Id, Id[_]] { d => h =>
       val oh = d match {
-        case Self => Option(h)
+        case Self                             => Option(h)
         case loc: Locator with HasDescription => h.a(loc)
       }
       Nested(oh.map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing locator: $d")))
