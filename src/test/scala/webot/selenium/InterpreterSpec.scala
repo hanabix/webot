@@ -1,15 +1,15 @@
 package webot.selenium
 
-import org.scalamock.scalatest.MockFactory
 import org.openqa.selenium.WebDriver
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalamock.scalatest.MockFactory
 import cats._
 import syntax.all._
 import webot._
+import java.time.Duration
 
 class InterpreterSpec extends AnyWordSpec with MockFactory {
-  private class FakeHandler extends Handler(null, None, null)
+  private class FakeHandler extends Handler(mock[WebDriver], None, Duration.ZERO)
   private val handler: Handler = mock[FakeHandler]
 
   "A subject " when {
