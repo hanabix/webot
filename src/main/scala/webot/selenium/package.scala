@@ -1,5 +1,10 @@
 package webot
 
+import java.time.Duration
+import java.net.URL
+import scala.util.Try
+import scala.reflect.runtime.universe._
+
 import cats._
 import data._
 import free._
@@ -9,15 +14,9 @@ import org.openqa.selenium._
 import org.openqa.selenium.chrome._
 import org.openqa.selenium.remote._
 import org.openqa.selenium.support.ui._
-
-import java.time.Duration
-import java.net.URL
-import java.util.function.{Function => JF}
-import scala.util.Try
-import scala.reflect.runtime.universe._
 import org.openqa.selenium.interactions.Actions
+
 import Control._
-import cats.evidence.Is
 
 package object selenium {
 
@@ -50,7 +49,7 @@ package object selenium {
 
     }
 
-  class Handler private[selenium] (wd: WebDriver, context: Option[WebElement], timeout: Duration) {
+  private[selenium] class Handler(wd: WebDriver, context: Option[WebElement], timeout: Duration) {
     import scala.jdk.FunctionConverters._
     import scala.jdk.CollectionConverters._
 
@@ -84,6 +83,8 @@ package object selenium {
     }
 
     def exec[A](op: Operator[A]): A = {
+      import Operator._
+
       if (context.isEmpty) throw new IllegalStateException("Should not exec a handler without context")
       val we = context.get
       op match {
@@ -98,46 +99,39 @@ package object selenium {
   }
 
   private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
+    import ExpressionA._
 
-    private def exec[A](tp: Type, locator: Locator, op: Operator[_]): ControlOr[A] = tp match {
+    final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
+      case SubjectGet(locator, op: Operator[_], tp)                => exec(tp, locator, op)
+      case SubjectGet(locator, ex: Expression[_] @unchecked, tp)   => exec(tp, locator, ex)
+      case SubjectApply(locator, op: Operator[_], tp)              => exec(tp, locator, op).map((_: Any) => ())
+      case SubjectApply(locator, ex: Expression[_] @unchecked, tp) => exec(tp, locator, ex).map((_: Any) => ())
+      case Go(control)                                             => control.asLeft
+      case unknown                                                 => throw new UnsupportedOperationException(unknown.toString)
+    }
+
+    def exec[A](tp: Type, locator: Locator, op: Operator[_]): ControlOr[A] = tp match {
       case Focus.id(f)   => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.opt(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.nel(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
       case Focus.list(f) => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
     }
 
-    private def exec[A](tp: Type, locator: Locator, ex: Expression[_]): ControlOr[A] = tp match {
+    def exec[A](tp: Type, locator: Locator, ex: Expression[_]): ControlOr[A] = tp match {
       case Focus.id(f)   => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
       case Focus.opt(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
       case Focus.nel(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
       case Focus.list(f) => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
     }
 
-    final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
-      case SubjectGet(locator, op: Operator[_], tp) =>
-        exec(tp, locator, op)
-
-      case SubjectGet(locator, ex: Expression[_] @unchecked, tp) =>
-        exec(tp, locator, ex)
-
-      case SubjectApply(locator, op: Operator[_], tp) =>
-        exec(tp, locator, op).map((_: Any) => ())
-
-      case SubjectApply(locator, ex: Expression[_] @unchecked, tp) =>
-        exec(tp, locator, ex).map((_: Any) => ())
-
-      case unknown =>
-        throw new UnsupportedOperationException(unknown.toString)
-    }
-
   }
 
-  trait Extractor[A, B] {
+  private[selenium] trait Extractor[A, B] {
     def unapply(a: A): Option[B]
   }
 
-  type Focus[F[_]] = Locator => Handler => Nested[ControlOr, F, Handler]
-  object Focus {
+  private[selenium] type Focus[F[_]] = Locator => Handler => Nested[ControlOr, F, Handler]
+  private[selenium] object Focus {
     private def focus[F[_]: Functor, A >: F[_]: TypeTag](f: Focus[F]): Extractor[Type, Focus[F]] =
       new Extractor[Type, Focus[F]] {
         def unapply(a: Type) = {

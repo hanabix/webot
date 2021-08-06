@@ -3,20 +3,18 @@ package webot
 import java.net.URL
 
 sealed trait Control
-
 object Control {
-
   final private[webot] case class Complain private (error: String)            extends Control
   final private[webot] case class Explore private (url: URL, more: List[URL]) extends Control
   final private[webot] case class Retry(max: Int)                             extends Control
   final private[webot] case object Repeat                                     extends Control
 
-  final private[webot] case class Context(url: Option[URL], control: Control)
-
   def complain(error: String): Control                  = Complain(error)
   def explore(url: URL, more: List[URL] = Nil): Control = Explore(url, more)
   def repeat: Control                                   = Repeat
   def retry(max: Int): Control                          = Retry(max)
+
+  final private case class Context(url: Option[URL], control: Control)
 
   def runner(c: Compiled): URL => Unit = { url =>
     @scala.annotation.tailrec
@@ -59,6 +57,6 @@ object Control {
       case Nil =>
     }
 
-    rec(List(Context(None, explore(url))))
+    rec(List(Context(None, Explore(url, Nil))))
   }
 }

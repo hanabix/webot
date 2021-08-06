@@ -1,12 +1,13 @@
 package webot.selenium
 
+import java.time.Duration
 import org.openqa.selenium.WebDriver
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalamock.scalatest.MockFactory
 import cats._
 import syntax.all._
 import webot._
-import java.time.Duration
+import Operator._
 
 class InterpreterSpec extends AnyWordSpec with MockFactory {
   private class FakeHandler extends Handler(mock[WebDriver], None, Duration.ZERO)
