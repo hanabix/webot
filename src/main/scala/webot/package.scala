@@ -25,15 +25,23 @@ package object webot {
   final private[webot] case class Input(value: String)    extends Operator[Unit]
   final private[webot] case object Hover                  extends Operator[Unit]
 
-  sealed trait ExpressionA[A]
-  final private[webot] case class SubjectGet[F[_], G[_], A](descriptor: Option[String], expr: F[A], tp: Type)   extends ExpressionA[G[A]]
-  final private[webot] case class SubjectApply[F[_], G[_]](descriptor: Option[String], proc: F[Unit], tp: Type) extends ExpressionA[Unit]
+  sealed trait Locator
+  trait HasDescription {
+    def description: String
+  }
+  final private[webot] case object Self                       extends Locator
+  final private[webot] case class Local(description: String)  extends Locator with HasDescription
+  final private[webot] case class Global(description: String) extends Locator with HasDescription
 
-  final class Subject[S[_], L[_], S_ >: S[_]: TypeTag, L_ >: L[_]: TypeTag](descriptor: Option[String]) {
-    def apply[H[_]](proc: H[Unit]): Procedure                 = Free.liftF[ExpressionA, Unit](SubjectApply(descriptor, proc, typeOf[S_]))
-    def apply_if_present[H[_]](proc: H[Unit]): Procedure      = Free.liftF[ExpressionA, Unit](SubjectApply(descriptor, proc, typeOf[L_]))
-    def get[H[_], A](expr: H[A]): Expression[S[A]]            = Free.liftF[ExpressionA, S[A]](SubjectGet(descriptor, expr, typeOf[S_]))
-    def get_if_present[H[_], A](expr: H[A]): Expression[L[A]] = Free.liftF[ExpressionA, L[A]](SubjectGet(descriptor, expr, typeOf[L_]))
+  sealed trait ExpressionA[A]
+  final private[webot] case class SubjectGet[F[_], G[_], A](locator: Locator, expr: F[A], tp: Type)   extends ExpressionA[G[A]]
+  final private[webot] case class SubjectApply[F[_], G[_]](locator: Locator, proc: F[Unit], tp: Type) extends ExpressionA[Unit]
+
+  final class Subject[S[_], L[_], S_ >: S[_]: TypeTag, L_ >: L[_]: TypeTag](locator: Locator) {
+    def apply[H[_]](proc: H[Unit]): Procedure                 = Free.liftF[ExpressionA, Unit](SubjectApply(locator, proc, typeOf[S_]))
+    def apply_if_present[H[_]](proc: H[Unit]): Procedure      = Free.liftF[ExpressionA, Unit](SubjectApply(locator, proc, typeOf[L_]))
+    def get[H[_], A](expr: H[A]): Expression[S[A]]            = Free.liftF[ExpressionA, S[A]](SubjectGet(locator, expr, typeOf[S_]))
+    def get_if_present[H[_], A](expr: H[A]): Expression[L[A]] = Free.liftF[ExpressionA, L[A]](SubjectGet(locator, expr, typeOf[L_]))
   }
 
   def open[A](url: String): Open[A] = new Open(new URL(url))
@@ -47,7 +55,9 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def a(descriptor: String): Subject[Id, Option, Id[_], Option[_]] = new Subject(Option(descriptor))
+  def a(description: String): Subject[Id, Option, Id[_], Option[_]] = new Subject(Local(description))
+
+  // def a(locator: Locator with HasDescription): Subject[Id, Option, Id[_], Option[_]] = new Subject(locator)
 
   /** Get a [[Subject]] contains all elements by descriptor.
     *
@@ -58,7 +68,9 @@ package object webot {
     * @param descriptor
     * @return
     */
-  def all(descriptor: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(Option(descriptor))
+  def all(description: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(Local(description))
+
+  // def all(locator: Locator with HasDescription): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(locator)
 
   /** Get the [[Subject]] in current context.
     *
@@ -73,7 +85,7 @@ package object webot {
     *
     * @return
     */
-  def it: Subject[Id, Id, Id[_], Id[_]] = new Subject(Option.empty)
+  def it: Subject[Id, Id, Id[_], Id[_]] = new Subject(Self)
 
   implicit final class AsOps[F[_], G[_]: Functor, A](val ffa: Free[F, G[String]]) {
 
@@ -84,6 +96,19 @@ package object webot {
       */
     def as[B](implicit f: String => B): Free[F, G[B]] = ffa.map(_.map(f))
   }
+
+  // implicit final class LocatorOps(val sc: StringContext) extends AnyVal {
+  //   def g(args: Any*): String = {
+  //     val strings     = sc.parts.iterator
+  //     val expressions = args.iterator
+  //     var buf         = new StringBuilder(strings.next())
+  //     while (strings.hasNext) {
+  //       buf.append(expressions.next())
+  //       buf.append(strings.next())
+  //     }
+  //     buf.toString()
+  //   }
+  // }
 
   /** An [[Operator]] to get attribute by name from a [[Subject]].
     *

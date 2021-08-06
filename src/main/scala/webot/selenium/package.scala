@@ -55,40 +55,36 @@ package object selenium {
     import scala.jdk.FunctionConverters._
     import scala.jdk.CollectionConverters._
 
-    private val wdw = new FluentWait(context.map(_.asInstanceOf[SearchContext]).getOrElse(wd))
-      .withTimeout(timeout)
+    private val searchContext            = context.map(_.asInstanceOf[SearchContext]).getOrElse(wd)
+    private def aWait(sc: SearchContext) = new FluentWait(sc).withTimeout(timeout)
 
-    def a(descriptor: String): Option[Handler] = {
-      val by = By.cssSelector(descriptor)
-      val cond: SearchContext => Handler = sc => {
-        sc.findElement(by) match {
-          case null                   => null
-          case we if we.isDisplayed() => new Handler(wd, Some(we), timeout)
-          case _                      => null
+    def a(locator: Locator with HasDescription): Option[Handler] = {
+      def cond(description: String): SearchContext => Handler =
+        _.findElement(By.cssSelector(description)) match {
+          case null => null
+          case we   => new Handler(wd, Some(we), timeout)
         }
-      }
 
-      Try(wdw.until(cond.asJava)).toOption
+      locator match {
+        case Global(d) => Try(aWait(wd).until(cond(d).asJava)).toOption
+        case Local(d)  => Try(aWait(searchContext).until(cond(d).asJava)).toOption
+      }
     }
 
-    def all(descriptor: String): List[Handler] = {
-      val by = By.cssSelector(descriptor)
-      val cond: SearchContext => List[Handler] = sc => {
-        sc.findElements(by) match {
+    def all(locator: Locator with HasDescription): List[Handler] = {
+      def cond(description: String): SearchContext => List[Handler] =
+        _.findElements(By.cssSelector(description)) match {
           case wes if wes.isEmpty() => null
           case wes                  => wes.asScala.toList.map(we => new Handler(wd, Some(we), timeout))
         }
+
+      locator match {
+        case Global(d) => Try(aWait(wd).until(cond(d).asJava)).toOption.getOrElse(Nil)
+        case Local(d) => Try(aWait(searchContext).until(cond(d).asJava)).toOption.getOrElse(Nil)
       }
-      Try(wdw.until(cond.asJava)).toOption.getOrElse(Nil)
     }
 
-    def exec(expr: Any): ControlOr[_] = expr match {
-      case op: Operator[_] @unchecked   => execOp(op).asRight
-      case ex: Expression[_] @unchecked => execEx(ex)
-      case unknown                      => throw new UnsupportedOperationException(unknown.toString())
-    }
-
-    def execOp[A](op: Operator[A]): A = {
+    def exec[A](op: Operator[A]): A = {
       if (context.isEmpty) throw new IllegalStateException("Should not exec a handler without context")
       val we = context.get
       op match {
@@ -99,37 +95,37 @@ package object selenium {
       }
     }
 
-    def execEx[A](expr: Expression[A]): ControlOr[A] = expr.foldMap(interpreter(this))
+    def exec[A](expr: Expression[A]): ControlOr[A] = expr.foldMap(interpreter(this))
   }
 
   private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
 
-    private def exec[A](tp: Type, descriptor: Option[String], op: Operator[_]): ControlOr[A] = tp match {
-      case Focus.id(f)   => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.opt(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.nel(f)  => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.list(f) => f(descriptor)(handler).map(_.execOp(op)).value.asInstanceOf[ControlOr[A]]
+    private def exec[A](tp: Type, locator: Locator, op: Operator[_]): ControlOr[A] = tp match {
+      case Focus.id(f)   => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.opt(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.nel(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
+      case Focus.list(f) => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
     }
 
-    private def exec[A](tp: Type, descriptor: Option[String], ex: Expression[_]): ControlOr[A] = tp match {
-      case Focus.id(f)   => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.opt(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.nel(f)  => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.list(f) => f(descriptor)(handler).map(_.execEx(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+    private def exec[A](tp: Type, locator: Locator, ex: Expression[_]): ControlOr[A] = tp match {
+      case Focus.id(f)   => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.opt(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.nel(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
+      case Focus.list(f) => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
     }
 
     final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
-      case SubjectGet(descriptor, op: Operator[_], tp) =>
-        exec(tp, descriptor, op)
+      case SubjectGet(locator, op: Operator[_], tp) =>
+        exec(tp, locator, op)
 
-      case SubjectGet(descriptor, ex: Expression[_] @unchecked, tp) =>
-        exec(tp, descriptor, ex)
+      case SubjectGet(locator, ex: Expression[_] @unchecked, tp) =>
+        exec(tp, locator, ex)
 
-      case SubjectApply(descriptor, op: Operator[_], tp) =>
-        exec(tp, descriptor, op).map((_: Any) => ())
+      case SubjectApply(locator, op: Operator[_], tp) =>
+        exec(tp, locator, op).map((_: Any) => ())
 
-      case SubjectApply(descriptor, ex: Expression[_] @unchecked, tp) =>
-        exec(tp, descriptor, ex).map((_: Any) => ())
+      case SubjectApply(locator, ex: Expression[_] @unchecked, tp) =>
+        exec(tp, locator, ex).map((_: Any) => ())
 
       case unknown =>
         throw new UnsupportedOperationException(unknown.toString)
@@ -141,7 +137,7 @@ package object selenium {
     def unapply(a: A): Option[B]
   }
 
-  type Focus[F[_]] = Option[String] => Handler => Nested[ControlOr, F, Handler]
+  type Focus[F[_]] = Locator => Handler => Nested[ControlOr, F, Handler]
   object Focus {
     private def focus[F[_]: Functor, A >: F[_]: TypeTag](f: Focus[F]): Extractor[Type, Focus[F]] =
       new Extractor[Type, Focus[F]] {
@@ -151,23 +147,23 @@ package object selenium {
       }
 
     val id = focus[Id, Id[_]] { d => h =>
-      val oh: Option[Handler] = d.flatMap(h.a).orElse(Option(h))
-      Nested(oh.map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing descriptor: $d")))
+      val oh = d match {
+        case Self => Option(h)
+        case loc: Locator with HasDescription => h.a(loc)
+      }
+      Nested(oh.map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing locator: $d")))
     }
 
     val opt = focus[Option, Option[_]] { d => h =>
-      if (d.isEmpty) throw new IllegalStateException("Never be here")
-      Nested(h.a(d.get).asRight)
+      Nested(h.a(d.asInstanceOf[Locator with HasDescription]).asRight)
     }
 
     val nel = focus[NonEmptyList, NonEmptyList[_]] { d => h =>
-      if (d.isEmpty) throw new IllegalStateException("Never be here")
-      Nested(h.all(d.get).toNel.toRight(complain(s"Missing descriptor: $d")))
+      Nested(h.all(d.asInstanceOf[Locator with HasDescription]).toNel.toRight(complain(s"Missing locator: $d")))
     }
 
     val list = focus[List, List[_]] { d => h =>
-      if (d.isEmpty) throw new IllegalStateException("Never be here")
-      Nested(h.all(d.get).asRight)
+      Nested(h.all(d.asInstanceOf[Locator with HasDescription]).asRight)
     }
   }
 
