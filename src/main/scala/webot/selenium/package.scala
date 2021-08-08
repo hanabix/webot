@@ -1,163 +1,78 @@
 package webot
 
 import java.time.Duration
-import java.net.URL
 import scala.util.Try
-import scala.reflect.runtime.universe._
 
 import cats._
 import data._
 import free._
-import instances.all._
 import syntax.all._
 import org.openqa.selenium._
 import org.openqa.selenium.chrome._
 import org.openqa.selenium.remote._
 import org.openqa.selenium.support.ui._
 import org.openqa.selenium.interactions.Actions
-
-import Control._
+import java.net.URI
 
 package object selenium {
 
-  implicit final def webDriverRuntime(implicit timeout: Duration = Duration.ofSeconds(3), proxy: Option[Proxy] = None): Runtime[Handler] = df =>
-    run => {
+  final case class Handle private (element: WebElement, actions: Actions, uri: URI)
 
-      def driver(options: ChromeOptions): WebDriver = {
-        try {
-          new RemoteWebDriver(options)
-        } catch {
-          case _: Throwable => new ChromeDriver(options)
-        }
+  implicit val element: Element[Handle] = new Element[Handle] with Control.Dsl {
+    import Operator._
+
+    def apply(ea: Handle) = new (Operator ~> ControlOr) {
+      def apply[A](op: Operator[A]): ControlOr[A] = op match {
+        case Input(value)    => ea.element.sendKeys(value).asRight
+        case Text            => ea.element.getText().asRight
+        case Hover           => ea.actions.moveToElement(ea.element).perform().asRight
+        case Attribute(name) => attr(name)
       }
 
-      val options = new ChromeOptions()
+      private def attr(name: String): ControlOr[String] = {
+        def absolute(href: String): String = {
+          if (URI.create(href).isAbsolute()) href
+          else {
+            if (href.startsWith("/")) s"${ea.uri.getScheme()}://${ea.uri.getHost()}$href"
+            else s"${ea.uri}$href"
+          }
+        }
 
-      proxy.foreach { p => options.setCapability("proxy", p) }
+        val r = Option(ea.element.getAttribute(name)).toRight(complain(s"Missing Attribute: $name"))
+        name match {
+          case "href" => r.map(absolute)
+          case _      => r
+        }
+      }
+    }
+  }
 
-      val rwd = driver(options)
-
+  implicit final def runtime(implicit
+      timeout: Duration = Duration.ofSeconds(3),
+      proxy: Option[Proxy] = None
+  ): Runtime[Handle] = { run =>
+    def driver(options: ChromeOptions): WebDriver = {
       try {
-        val i = interpreter(new Handler(rwd, None, timeout))
-        run({ mayBeUrl =>
-          mayBeUrl.map(_.toString).foreach(rwd.get)
-          df(new URL(rwd.getCurrentUrl)).foldMap(i)
-        })
-      } finally {
-        rwd.quit()
-      }
-
-    }
-
-  private[selenium] class Handler(wd: WebDriver, context: Option[WebElement], timeout: Duration) {
-    import scala.jdk.FunctionConverters._
-    import scala.jdk.CollectionConverters._
-
-    private val searchContext            = context.map(_.asInstanceOf[SearchContext]).getOrElse(wd)
-    private def aWait(sc: SearchContext) = new FluentWait(sc).withTimeout(timeout)
-
-    def a(locator: Locator with HasDescription): Option[Handler] = {
-      def cond(description: String): SearchContext => Handler =
-        _.findElement(By.cssSelector(description)) match {
-          case null => null
-          case we   => new Handler(wd, Some(we), timeout)
-        }
-
-      locator match {
-        case Global(d) => Try(aWait(wd).until(cond(d).asJava)).toOption
-        case Local(d)  => Try(aWait(searchContext).until(cond(d).asJava)).toOption
+        new RemoteWebDriver(options)
+      } catch {
+        case _: Throwable => new ChromeDriver(options)
       }
     }
 
-    def all(locator: Locator with HasDescription): List[Handler] = {
-      def cond(description: String): SearchContext => List[Handler] =
-        _.findElements(By.cssSelector(description)) match {
-          case wes if wes.isEmpty() => null
-          case wes                  => wes.asScala.toList.map(we => new Handler(wd, Some(we), timeout))
-        }
+    val options = new ChromeOptions()
 
-      locator match {
-        case Global(d) => Try(aWait(wd).until(cond(d).asJava)).toOption.getOrElse(Nil)
-        case Local(d)  => Try(aWait(searchContext).until(cond(d).asJava)).toOption.getOrElse(Nil)
-      }
+    proxy.foreach { p => options.setCapability("proxy", p) }
+
+    val rwd = driver(options)
+
+    val context: String => webot.Context[Handle] = { url =>
+      rwd.get(url)
+      val currentUrl = rwd.getCurrentUrl()
+      val h          = Handle(rwd.findElement(By.tagName("html")), new Actions(rwd), URI.create(currentUrl))
+      Context(rwd, h, currentUrl, sc => new FluentWait(sc).withTimeout(timeout))
     }
-
-    def exec[A](op: Operator[A]): A = {
-      import Operator._
-
-      if (context.isEmpty) throw new IllegalStateException("Should not exec a handler without context")
-      val we = context.get
-      op match {
-        case Attribute(name) => we.getAttribute(name)
-        case Text            => we.getText()
-        case Input(value)    => we.sendKeys(value)
-        case Hover           => new Actions(wd).moveToElement(we).perform()
-      }
-    }
-
-    def exec[A](expr: Expression[A]): ControlOr[A] = expr.foldMap(interpreter(this))
-  }
-
-  private[selenium] def interpreter(handler: Handler): (ExpressionA ~> ControlOr) = new (ExpressionA ~> ControlOr) {
-    import ExpressionA._
-
-    final def apply[A](fa: ExpressionA[A]): ControlOr[A] = fa match {
-      case SubjectGet(locator, op: Operator[_], tp)                => exec(tp, locator, op)
-      case SubjectGet(locator, ex: Expression[_] @unchecked, tp)   => exec(tp, locator, ex)
-      case SubjectApply(locator, op: Operator[_], tp)              => exec(tp, locator, op).map((_: Any) => ())
-      case SubjectApply(locator, ex: Expression[_] @unchecked, tp) => exec(tp, locator, ex).map((_: Any) => ())
-      case Go(control)                                             => control.asLeft
-      case unknown                                                 => throw new UnsupportedOperationException(unknown.toString)
-    }
-
-    def exec[A](tp: Type, locator: Locator, op: Operator[_]): ControlOr[A] = tp match {
-      case Focus.id(f)   => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.opt(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.nel(f)  => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
-      case Focus.list(f) => f(locator)(handler).map(_.exec(op)).value.asInstanceOf[ControlOr[A]]
-    }
-
-    def exec[A](tp: Type, locator: Locator, ex: Expression[_]): ControlOr[A] = tp match {
-      case Focus.id(f)   => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.opt(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.nel(f)  => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-      case Focus.list(f) => f(locator)(handler).map(_.exec(ex)).value.map(_.sequence).flatten.asInstanceOf[ControlOr[A]]
-    }
-
-  }
-
-  private[selenium] trait Extractor[A, B] {
-    def unapply(a: A): Option[B]
-  }
-
-  private[selenium] type Focus[F[_]] = Locator => Handler => Nested[ControlOr, F, Handler]
-  private[selenium] object Focus {
-    private def focus[F[_]: Functor, A >: F[_]: TypeTag](f: Focus[F]): Extractor[Type, Focus[F]] =
-      new Extractor[Type, Focus[F]] {
-        def unapply(a: Type) = {
-          if (typeOf[A] <:< a) Some(f) else None
-        }
-      }
-
-    val id = focus[Id, Id[_]] { d => h =>
-      val oh = d match {
-        case Self                             => Option(h)
-        case loc: Locator with HasDescription => h.a(loc)
-      }
-      Nested(oh.map(_.asInstanceOf[Id[Handler]]).toRight(complain(s"Missing locator: $d")))
-    }
-
-    val opt = focus[Option, Option[_]] { d => h =>
-      Nested(h.a(d.asInstanceOf[Locator with HasDescription]).asRight)
-    }
-
-    val nel = focus[NonEmptyList, NonEmptyList[_]] { d => h =>
-      Nested(h.all(d.asInstanceOf[Locator with HasDescription]).toNel.toRight(complain(s"Missing locator: $d")))
-    }
-
-    val list = focus[List, List[_]] { d => h =>
-      Nested(h.all(d.asInstanceOf[Locator with HasDescription]).asRight)
-    }
+    try { run(context) }
+    finally { rwd.quit() }
   }
 
 }
