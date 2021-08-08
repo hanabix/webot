@@ -26,18 +26,18 @@ object As {
   }
 
   trait Dsl {
-    trait AsOps[F[_], G[_]] {
+    trait AsOps {
 
-      /** Convert a string to type `B`.
+      /** Convert a string to type `A`.
         *
         * @param f
         * @return
         */
-      def as[A: As]: Free[F, G[A]]
+      def as[A: As]: A
     }
 
-    implicit def asSyntax[F[_], G[_]: Functor](fa: Free[F, G[String]]): AsOps[F, G] = new AsOps[F, G] {
-      def as[A: As] = fa.map(_.map(As[A].from))
+    implicit def asSyntax(value: String): AsOps = new AsOps {
+      def as[A: As] = As[A].from(value)
     }
   }
 

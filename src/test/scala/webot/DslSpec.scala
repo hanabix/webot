@@ -60,6 +60,16 @@ class DslSpec extends AnyWordSpec with MockFactory {
         assert(expr.foldMap(compiler(ctx)).value.value.getOrElse("") == "hello")
       }
 
+      "get text as Int" in {
+        (element.findElements _).expects(By.cssSelector("span")).returning(Arrays.asList(element))
+        (element.getText: () => String).expects().returning("10")
+
+        val expr = for {
+          x <- a("span") get text
+        } yield x.as[Int]
+        assert(expr.foldMap(compiler(ctx)).value.value.getOrElse(0) == 10)
+      }
+
       "get attribute name" in {
         (element.findElements _).expects(By.cssSelector("a")).returning(Arrays.asList(element))
         (element.getAttribute _).expects("href").returning("/hello")
