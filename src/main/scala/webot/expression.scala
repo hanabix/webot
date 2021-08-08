@@ -1,117 +1,114 @@
 package webot
 
-import java.net.URL
-import scala.reflect.runtime.universe._
 import cats._
 import data._
 import free._
+import syntax.all._
 
-sealed trait ExpressionA[A]
-object ExpressionA {
-  final private[webot] case class SubjectGet[F[_], G[_], A](locator: Locator, expr: F[A], tp: Type)   extends ExpressionA[G[A]]
-  final private[webot] case class SubjectApply[F[_], G[_]](locator: Locator, proc: F[Unit], tp: Type) extends ExpressionA[Unit]
-  final private[webot] case class Go(control: Control)                                                extends ExpressionA[Unit]
-}
+sealed trait Expression[+A]
+object Expression {
 
-private[webot] final class Subject[S[_], L[_], S_ >: S[_]: TypeTag, L_ >: L[_]: TypeTag](locator: Locator) {
-  import ExpressionA._
-  def apply[H[_]](proc: H[Unit]): Procedure                 = Free.liftF[ExpressionA, Unit](SubjectApply(locator, proc, typeOf[S_]))
-  def apply_if_present[H[_]](proc: H[Unit]): Procedure      = Free.liftF[ExpressionA, Unit](SubjectApply(locator, proc, typeOf[L_]))
-  def get[H[_], A](expr: H[A]): Expression[S[A]]            = Free.liftF[ExpressionA, S[A]](SubjectGet(locator, expr, typeOf[S_]))
-  def get_if_present[H[_], A](expr: H[A]): Expression[L[A]] = Free.liftF[ExpressionA, L[A]](SubjectGet(locator, expr, typeOf[L_]))
-}
+  private final case class GetAFrom[F[_], A](d: Descriptor, expression: F[A])             extends Expression[A]
+  private final case class GetOptionAFrom[F[_], A](d: Descriptor, expression: F[A])       extends Expression[Option[A]]
+  private final case class GetNonEmptyListAFrom[F[_], A](d: Descriptor, expression: F[A]) extends Expression[NonEmptyList[A]]
+  private final case class GetListAFrom[F[_], A](d: Descriptor, expression: F[A])         extends Expression[List[A]]
+  private final case class Go(c: Control)                                                 extends Expression[Unit]
 
-trait ExpressionDSL {
-  import ExpressionA._
-  import Control._
+  final def getAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[A]                           = GetAFrom(d, expression)
+  final def getOptionAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[Option[A]]             = GetOptionAFrom(d, expression)
+  final def getNonEmptyListAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[NonEmptyList[A]] = GetNonEmptyListAFrom(d, expression)
+  final def getListAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[List[A]]                 = GetListAFrom(d, expression)
 
-  type Expression[A] = Free[ExpressionA, A]
-  type Procedure     = Free[ExpressionA, Unit]
+  trait Dsl extends Element.Dsl {
 
-  /** Get a [[Subject]] contains one element Subject by descriptor.
-    *
-    * {{{ a("a.link") }}}
-    *
-    * Get element tag named `a` and decorated by class `link`.
-    *
-    * @param descriptor
-    * @return
-    */
-  def a(description: String): Subject[Id, Option, Id[_], Option[_]] = a(Local(description))
+    implicit def ctxCompiler[E: Element]: ContextCompiler[E] = ctx =>
+      new (Expression ~> EControlOr) {
+        import ctx._
 
-  /** Get a [[Subject]] contains one elements by [[Locator]].
-    *
-    * {{ a(g"a.link") }}
-    *
-    * Get element tag named `a` and decorated by class `link` in global search context.
-    *
-    * @param locator
-    * @return
-    */
-  def a(locator: Locator with HasDescription): Subject[Id, Option, Id[_], Option[_]] = new Subject(locator)
+        private val EControlOr = EitherT
 
-  /** Get a [[Subject]] contains all elements by description in current search context.
-    *
-    * {{{ a("a.link") }}}
-    *
-    * Get element tag named `a` and decorated by class `link`.
-    *
-    * @param descriptor
-    * @return
-    */
-  def all(description: String): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = all(Local(description))
+        def apply[A](fa: Expression[A]): EControlOr[A] = fa match {
+          case GetAFrom(d, op: Operator[A] @unchecked)                => EControlOr(eval[Id, A](d, op))
+          case GetOptionAFrom(d, op: Operator[A] @unchecked)          => EControlOr(eval[Option, A](d, op))
+          case GetAFrom(d, fe: FExpression[A] @unchecked)             => EControlOr(eval[Id, A](d, fe))
+          case GetOptionAFrom(d, fe: FExpression[A] @unchecked)       => EControlOr(eval[Option, A](d, fe))
+          case GetNonEmptyListAFrom(d, op: Operator[A] @unchecked)    => EControlOr(eval[NonEmptyList, A](d, op))
+          case GetListAFrom(d, op: Operator[A] @unchecked)            => EControlOr(eval[List, A](d, op))
+          case GetNonEmptyListAFrom(d, fe: FExpression[A] @unchecked) => EControlOr(eval[NonEmptyList, A](d, fe))
+          case GetListAFrom(d, fe: FExpression[A] @unchecked)         => EControlOr(eval[List, A](d, fe))
+          case Go(c)                                                  => EControlOr(Eval.now(c.asLeft))
+          case _                                                      => throw new UnsupportedOperationException("Never be here")
+        }
 
-  /** Get a [[Subject]] contains all elements by [[Locator]].
-    *
-    * {{ all(g"a.link") }}
-    *
-    * Get all elements tag named `a` and decorated by class `link` in global search context.
-    *
-    * @param locator
-    * @return
-    */
-  def all(locator: Locator with HasDescription): Subject[NonEmptyList, List, NonEmptyList[_], List[_]] = new Subject(locator)
+        private def eval[F[_]: Functor: Traverse, A](d: Descriptor, fe: FExpression[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = {
+          ctx.get[F](d).map(_.map(c => Eval.defer(fe.foldMap(ctxCompiler(Element[E])(c)).value)).sequence.map(_.sequence)).sequence.map(_.flatten)
+        }
 
-  /** Get the [[Subject]] in current context.
-    *
-    * {{{
-    * all("a.link") get {
-    *   for {
-    *     _ <- it apply hover
-    *     n <- a("span.popup") get text
-    *   } yield
-    * }
-    * }}}
-    *
-    * @return
-    */
-  def it: Subject[Id, Id, Id[_], Id[_]] = new Subject(Self)
+        private def eval[F[_]: Functor: Traverse, A](d: Descriptor, op: Operator[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = Eval.now {
+          ctx.get[F](d).flatMap(_.map(c => c.handle(op)).sequence)
+        }
 
-  /** Sequential explore urls.
-    *
-    * @param urls
-    * @return
-    */
-  def explore(urls: NonEmptyList[URL]): Procedure = Free.liftF(Go(Explore(urls.head, urls.tail)))
+      }
 
-  /** Explore url.
-    *
-    * @param url
-    * @return
-    */
-  def explore(url: URL): Procedure = explore(NonEmptyList.one(url))
+    trait Loose[L[_]] {
+      def get_if_present[F[_], A](expression: F[A]): FExpression[L[A]]
+      def apply_if_present[F[_]](expression: F[Unit]): FExpression[L[Unit]]
+    }
 
-  /** Repeat current url without refresh.
-    *
-    * @return
-    */
-  def repeat: Procedure = Free.liftF(Go(Repeat))
+    trait Strict[S[_]] {
+      def get[F[_], A](expression: F[A]): FExpression[S[A]]
+      def apply[F[_]](expression: F[Unit]): FExpression[S[Unit]]
+    }
 
-  /** Retry current url after refresh, and halt if exceed max times.
-    *
-    * @param max
-    * @return
-    */
-  def retry(max: Int): Procedure = Free.liftF(Go(Retry(max)))
+    /** Get one element by [[Scoped]] descriptor in current [[Context]].
+      *
+      * {{{ a(g"a.link") }}}
+      *
+      * Get one element tag named `a` and decorated by class `link` in global search context.
+      *
+      * @param descriptor
+      * @return
+      */
+    final def a(descriptor: Scoped): Strict[Id] with Loose[Option] = new Strict[Id] with Loose[Option] {
+      def get[F[_], A](expression: F[A])              = Free.liftF(getAFrom(descriptor, expression))
+      def get_if_present[F[_], A](expression: F[A])   = Free.liftF(getOptionAFrom(descriptor, expression))
+      def apply[F[_]](expression: F[Unit])            = Free.liftF(getAFrom(descriptor, expression))
+      def apply_if_present[F[_]](expression: F[Unit]) = Free.liftF(getOptionAFrom(descriptor, expression))
+    }
+
+    /** Get all elements by [[Scoped]] descriptor in current [[Context]].
+      *
+      * {{ all(g"a.link") }}
+      *
+      * Get all elements tag named `a` and decorated by class `link` in global search context.
+      *
+      * @param descriptor
+      * @return
+      */
+    final def all(descriptor: Scoped): Strict[NonEmptyList] with Loose[List] = new Strict[NonEmptyList] with Loose[List] {
+      def get[F[_], A](expression: F[A])              = Free.liftF(getNonEmptyListAFrom(descriptor, expression))
+      def get_if_present[F[_], A](expression: F[A])   = Free.liftF(getListAFrom(descriptor, expression))
+      def apply[F[_]](expression: F[Unit])            = Free.liftF(getNonEmptyListAFrom(descriptor, expression))
+      def apply_if_present[F[_]](expression: F[Unit]) = Free.liftF(getListAFrom(descriptor, expression))
+    }
+
+    /** Get the element in current [[Context]].
+      *
+      * {{{
+      * all("a.link") get {
+      *   for {
+      *     _ <- it apply hover
+      *     n <- a("span.popup") get text
+      *   } yield
+      * }
+      * }}}
+      *
+      * @return
+      */
+    final def it: Strict[Id] = new Strict[Id] {
+      def get[F[_], A](expression: F[A])   = Free.liftF(getAFrom(Self, expression))
+      def apply[F[_]](expression: F[Unit]) = Free.liftF(getAFrom(Self, expression))
+    }
+  }
 
 }

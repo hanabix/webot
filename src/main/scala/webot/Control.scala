@@ -1,62 +1,60 @@
 package webot
 
-import java.net.URL
+import cats._
+import cats.arrow.FunctionK
+import cats.data.NonEmptyList
 
 sealed trait Control
 object Control {
-  final private[webot] case class Complain private (error: String)            extends Control
-  final private[webot] case class Explore private (url: URL, more: List[URL]) extends Control
-  final private[webot] case class Retry(max: Int)                             extends Control
-  final private[webot] case object Repeat                                     extends Control
+  private final case class Complain(error: String)     extends Control
+  private final case class Explore(urls: List[String]) extends Control
+  private final case class Retry(max: Int)             extends Control
+  private final case object Repeat                     extends Control
 
-  def complain(error: String): Control                  = Complain(error)
-  def explore(url: URL, more: List[URL] = Nil): Control = Explore(url, more)
-  def repeat: Control                                   = Repeat
-  def retry(max: Int): Control                          = Retry(max)
+  private final case class Run(url: String, b: Branch, limit: Option[Int] = None)
 
-  final private case class Context(url: Option[URL], control: Control)
+  trait Dsl {
+    final implicit val fromId: Id ~> List = new (Id ~> List) {
+      def apply[A](fa: Id[A]): List[A] = List(fa)
+    }
+    final implicit val fromOption: Option ~> List = new (Option ~> List) {
+      def apply[A](fa: Option[A]): List[A] = fa.toList
+    }
+    final implicit val fromNonEmptyList: NonEmptyList ~> List = new (NonEmptyList ~> List) {
+      def apply[A](fa: NonEmptyList[A]): List[A] = fa.toList
+    }
+    final implicit val fromList: List ~> List = FunctionK.id
 
-  def runner(c: Compiled): URL => Unit = { url =>
-    @scala.annotation.tailrec
-    def rec(urls: List[Context]): Unit = urls match {
-      case Context(_, Explore(url, Nil)) :: rest =>
-        c(Option(url)) match {
-          case Left(Complain(error)) => Console.err.println(error); rec(rest)
-          case Left(c)               => rec(Context(Option(url), c) :: rest)
-          case Right(_)              => rec(rest)
-        }
+    def complain(error: String): Control                                = Complain(error)
+    def explore[F[_]](urls: F[String])(implicit nt: F ~> List): Control = Explore(nt(urls))
+    def repeat: Control                                                 = Repeat
+    def retry(max: Int): Control                                        = Retry(max)
 
-      case Context(Some(_), Explore(url, head :: tail)) :: rest =>
-        c(Option(url)) match {
-          case Left(Complain(error)) => Console.err.println(error); rec(rest)
-          case Left(c)               => rec(Context(Option(url), c) :: rest)
-          case Right(_)              => rec(Context(Option(url), Explore(head, tail)) :: rest)
-        }
+    implicit def engine: Engine = { fork => url =>
+      @scala.annotation.tailrec
+      def rec(branches: List[Run]): Unit = branches match {
 
-      case Context(Some(url), Repeat) :: rest =>
-        c(None) match {
-          case Left(Complain(error)) => Console.err.println(error); rec(rest)
-          case Left(c)               => rec(Context(Option(url), c) :: rest)
-          case Right(_)              => rec(rest)
-        }
+        case (head @ Run(url, branch, limit)) :: tail =>
+          branch() match {
+            case Right(_)              => rec(tail)
+            case Left(Complain(error)) => Console.err.println(error); rec(tail)
+            case Left(Explore(urls))   => rec(urls.map(u => Run(u, fork(u))) ::: tail)
+            case Left(Repeat)          => rec(head :: tail)
+            case Left(Retry(max)) =>
+              limit match {
+                case Some(0) => Console.err.println(s"Exceed max retries: $max"); rec(tail)
+                case Some(r) => rec(Run(url, fork(url), Option(r - 1)) :: tail)
+                case None    => rec(Run(url, fork(url), Option(max - 1)) :: tail)
+              }
+          }
 
-      case Context(Some(url), Retry(0)) :: rest =>
-        Console.err.println(s"Exceed retring times: $url"); rec(rest)
+        case Nil =>
+      }
 
-      case Context(o @ Some(url), Retry(max)) :: rest =>
-        c(o) match {
-          case Left(Complain(error)) => Console.err.println(error); rec(rest)
-          case Left(Retry(_))        => rec(Context(Option(url), Retry(max - 1)) :: rest)
-          case Left(c)               => rec(Context(Option(url), c) :: rest)
-          case Right(_)              => rec(rest)
-        }
+      rec(List(Run(url, fork(url))))
 
-      case Context(_, _) :: rest =>
-        throw new IllegalStateException("Never be here")
-
-      case Nil =>
     }
 
-    rec(List(Context(None, Explore(url, Nil))))
   }
+
 }

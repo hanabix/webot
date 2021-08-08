@@ -6,23 +6,49 @@ import syntax.all._
 import java.net._
 import scala.reflect.runtime.universe._
 
-package object webot extends OperatorDSL with ExpressionDSL with AsInstances {
+package object webot {
 
-  type ControlOr[A]         = Either[Control, A]
-  type Compiled             = Option[URL] => ControlOr[Unit]
-  type ParticalProcedure[A] = PartialFunction[URL, Procedure]
-  type Runtime[A]           = ParticalProcedure[A] => (Compiled => Unit) => Unit
+  private[webot] type FunctionAK[A, F[_], G[_]] = A => F ~> G
+  private[webot] type ControlOr[A]              = Either[Control, A]
+  private[webot] type FExpression[A]            = Free[Expression, A]
+  private[webot] type EControlOr[A]             = EitherT[Eval, Control, A]
+  private[webot] type ContextCompiler[A]        = FunctionAK[Context[A], Expression, EControlOr]
+  private[webot] type Branch                    = () => ControlOr[Unit]
+  private[webot] type Fork                      = String => Branch
+  private[webot] type Engine                    = Fork => String => Unit
+  private[webot] type Runtime[A]                = ((String => Context[A]) => Unit) => Unit
 
-  final class Open[A](url: URL) {
-    def apply(proc: Procedure)(implicit rt: Runtime[A]): Unit             = apply { case _ => proc }
-    def apply(pproc: ParticalProcedure[A])(implicit rt: Runtime[A]): Unit = rt(pproc) { c => Control.runner(c)(url) }
+  private[webot] sealed trait Descriptor
+  private[webot] sealed trait Scoped                         extends Descriptor
+  private[webot] final case object Self                      extends Descriptor
+  private[webot] final case class Local(descriptor: String)  extends Scoped
+  private[webot] final case class Global(descriptor: String) extends Scoped
+
+  trait GlobalOps {
+    def g(args: Any*): Global
   }
 
-  def open[A](url: String): Open[A] = new Open(new URL(url))
+  object dsl extends Operator.Dsl with Expression.Dsl with Control.Dsl with As.Dsl with Open.Dsl {
 
-  def output[F[_]: Functor: Foldable, A: Monoid](fa: F[A]): Unit = fa.map(println).fold
-  def output(values: Any*): Unit                                 = println(values.mkString(", "))
+    def output[F[_]: Functor, A: Monoid](fa: F[A]): Unit = { fa.map(println); () }
+    def output(values: Any*): Unit = println(values.mkString(", "))
 
-  implicit def asSyntax[F[_], G[_]: Functor](ffa: Free[F, G[String]]) = new AsOps[F, G](ffa)
-  implicit def globalLocatorSyntax(sc: StringContext): LocatorOps     = new LocatorOps(sc)
+    def a(descriptor: String): Strict[Id] with Loose[Option] = a(Local(descriptor))
+
+    def all(descriptor: String): Strict[NonEmptyList] with Loose[List] = all(Local(descriptor))
+
+    implicit def globalSyntax(sc: StringContext): GlobalOps = new GlobalOps {
+      def g(args: Any*) = {
+        val strings     = sc.parts.iterator
+        val expressions = args.iterator
+        var buf         = new StringBuilder(strings.next())
+        while (strings.hasNext) {
+          buf.append(expressions.next())
+          buf.append(strings.next())
+        }
+        Global(buf.toString())
+      }
+    }
+  }
+
 }
