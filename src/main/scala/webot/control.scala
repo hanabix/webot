@@ -6,24 +6,24 @@ import cats.data.NonEmptyList
 
 sealed trait Control
 object Control {
-  private final case class Complain(error: String)     extends Control
-  private final case class Explore(urls: List[String]) extends Control
-  private final case class Retry(max: Int)             extends Control
-  private final case object Repeat                     extends Control
+  final private case class Complain(error: String)     extends Control
+  final private case class Explore(urls: List[String]) extends Control
+  final private case class Retry(max: Int)             extends Control
+  final private case object Repeat                     extends Control
 
-  private final case class Run(url: String, b: Branch, limit: Option[Int] = None)
+  final private case class Run(url: String, b: Branch, limit: Option[Int] = None)
 
   trait Dsl {
-    final implicit val fromId: Id ~> List = new (Id ~> List) {
+    implicit final val fromId: Id ~> List = new (Id ~> List) {
       def apply[A](fa: Id[A]): List[A] = List(fa)
     }
-    final implicit val fromOption: Option ~> List = new (Option ~> List) {
+    implicit final val fromOption: Option ~> List = new (Option ~> List) {
       def apply[A](fa: Option[A]): List[A] = fa.toList
     }
-    final implicit val fromNonEmptyList: NonEmptyList ~> List = new (NonEmptyList ~> List) {
+    implicit final val fromNonEmptyList: NonEmptyList ~> List = new (NonEmptyList ~> List) {
       def apply[A](fa: NonEmptyList[A]): List[A] = fa.toList
     }
-    final implicit val fromList: List ~> List = FunctionK.id
+    implicit final val fromList: List ~> List = FunctionK.id
 
     def complain(error: String): Control                                = Complain(error)
     def explore[F[_]](urls: F[String])(implicit nt: F ~> List): Control = Explore(nt(urls))

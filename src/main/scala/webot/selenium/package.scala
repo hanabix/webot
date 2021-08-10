@@ -1,18 +1,15 @@
 package webot
 
-import java.time.Duration
-import scala.util.Try
-
 import cats._
-import data._
-import free._
-import syntax.all._
+import cats.syntax.all._
 import org.openqa.selenium._
 import org.openqa.selenium.chrome._
+import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.remote._
 import org.openqa.selenium.support.ui._
-import org.openqa.selenium.interactions.Actions
+
 import java.net.URI
+import java.time.Duration
 
 package object selenium {
 

@@ -18,11 +18,11 @@ package object webot {
   private[webot] type Engine                    = Fork => String => Unit
   private[webot] type Runtime[A]                = ((String => Context[A]) => Unit) => Unit
 
-  private[webot] sealed trait Descriptor
-  private[webot] sealed trait Scoped                         extends Descriptor
-  private[webot] final case object Self                      extends Descriptor
-  private[webot] final case class Local(descriptor: String)  extends Scoped
-  private[webot] final case class Global(descriptor: String) extends Scoped
+  sealed private[webot] trait Descriptor
+  sealed private[webot] trait Scoped                         extends Descriptor
+  final private[webot] case object Self                      extends Descriptor
+  final private[webot] case class Local(descriptor: String)  extends Scoped
+  final private[webot] case class Global(descriptor: String) extends Scoped
 
   trait GlobalOps {
     def g(args: Any*): Global

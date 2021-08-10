@@ -1,18 +1,15 @@
 package webot.selenium
 
-import scala.util.Try
+import cats._
+import cats.arrow._
+import cats.data._
+import org.openqa.selenium._
+import org.openqa.selenium.support.ui._
+import webot._
+
 import scala.jdk.CollectionConverters._
 import scala.jdk.FunctionConverters._
-
-import org.openqa.selenium._
-import org.openqa.selenium.chrome._
-import org.openqa.selenium.remote._
-import org.openqa.selenium.support.ui._
-
-import cats._
-import data._
-import arrow._
-import webot._
+import scala.util.Try
 
 final case class Context(global: SearchContext, handle: Handle, currentUrl: String, find: SearchContext => Wait[SearchContext])
     extends webot.Context[Handle]

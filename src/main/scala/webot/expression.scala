@@ -8,11 +8,11 @@ import syntax.all._
 sealed trait Expression[+A]
 object Expression {
 
-  private final case class GetAFrom[F[_], A](d: Descriptor, expression: F[A])             extends Expression[A]
-  private final case class GetOptionAFrom[F[_], A](d: Descriptor, expression: F[A])       extends Expression[Option[A]]
-  private final case class GetNonEmptyListAFrom[F[_], A](d: Descriptor, expression: F[A]) extends Expression[NonEmptyList[A]]
-  private final case class GetListAFrom[F[_], A](d: Descriptor, expression: F[A])         extends Expression[List[A]]
-  private final case class Go(c: Control)                                                 extends Expression[Unit]
+  final private case class GetAFrom[F[_], A](d: Descriptor, expression: F[A])             extends Expression[A]
+  final private case class GetOptionAFrom[F[_], A](d: Descriptor, expression: F[A])       extends Expression[Option[A]]
+  final private case class GetNonEmptyListAFrom[F[_], A](d: Descriptor, expression: F[A]) extends Expression[NonEmptyList[A]]
+  final private case class GetListAFrom[F[_], A](d: Descriptor, expression: F[A])         extends Expression[List[A]]
+  final private case class Go(c: Control)                                                 extends Expression[Unit]
 
   final def getAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[A]                           = GetAFrom(d, expression)
   final def getOptionAFrom[F[_], A](d: Descriptor, expression: F[A]): Expression[Option[A]]             = GetOptionAFrom(d, expression)
