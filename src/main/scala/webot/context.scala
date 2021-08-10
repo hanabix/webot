@@ -1,7 +1,7 @@
 package webot
 
 import cats._
-import data._
+import cats.data._
 
 private[webot] trait Context[H] { self =>
   type F[A]

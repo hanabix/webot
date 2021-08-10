@@ -1,15 +1,18 @@
 package webot
 
-import java.util.function
-import java.util.Arrays
 import java.net.URI
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalamock.scalatest.MockFactory
-import org.openqa.selenium.SearchContext
-import org.openqa.selenium.support.ui.Wait
-import org.openqa.selenium.WebElement
-import selenium.{runtime => _, _}
+import java.util.Arrays
+import java.util.function
+
 import org.openqa.selenium.By
+import org.openqa.selenium.SearchContext
+import org.openqa.selenium.WebElement
+import org.openqa.selenium.support.ui.Wait
+
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.wordspec.AnyWordSpec
+
+import selenium.{runtime => _, _}
 import dsl._
 
 class DslSpec extends AnyWordSpec with MockFactory {

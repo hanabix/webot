@@ -1,9 +1,11 @@
 package webot
 
 import cats._
-import syntax.either._
-import org.scalatest.wordspec.AnyWordSpec
+import cats.syntax.either._
+
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.wordspec.AnyWordSpec
+
 
 class ControlSpec extends AnyWordSpec with MockFactory with Control.Dsl {
 
