@@ -1,7 +1,5 @@
 package webot
 
-import cats._
-
 trait Element[A] extends FunctionAK[A, Operator, ControlOr]
 object Element {
   def apply[A](implicit e: Element[A]) = e

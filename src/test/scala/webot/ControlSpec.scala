@@ -1,14 +1,11 @@
 package webot
 
-import java.net.URL
 import cats._
 import syntax.either._
-import data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalamock.scalatest.MockFactory
 
 class ControlSpec extends AnyWordSpec with MockFactory with Control.Dsl {
-  import Control._
 
   private val fork                  = mock[Fork]
   private val done: ControlOr[Unit] = ().asRight

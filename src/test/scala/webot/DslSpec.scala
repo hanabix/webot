@@ -8,13 +8,9 @@ import org.scalamock.scalatest.MockFactory
 import org.openqa.selenium.SearchContext
 import org.openqa.selenium.support.ui.Wait
 import org.openqa.selenium.WebElement
-import org.openqa.selenium.interactions.Actions
-import cats._
-import arrow._
-import data._
-import dsl._
 import selenium.{runtime => _, _}
 import org.openqa.selenium.By
+import dsl._
 
 class DslSpec extends AnyWordSpec with MockFactory {
   private val sc: SearchContext   = mock[SearchContext]

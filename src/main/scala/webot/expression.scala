@@ -40,11 +40,11 @@ object Expression {
           case _                                                      => throw new UnsupportedOperationException("Never be here")
         }
 
-        private def eval[F[_]: Functor: Traverse, A](d: Descriptor, fe: FExpression[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = {
+        private def eval[F[_]: Traverse, A](d: Descriptor, fe: FExpression[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = {
           ctx.get[F](d).map(_.map(c => Eval.defer(fe.foldMap(ctxCompiler(Element[E])(c)).value)).sequence.map(_.sequence)).sequence.map(_.flatten)
         }
 
-        private def eval[F[_]: Functor: Traverse, A](d: Descriptor, op: Operator[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = Eval.now {
+        private def eval[F[_]: Traverse, A](d: Descriptor, op: Operator[A])(implicit nt: ctx.F ~> F): Eval[ControlOr[F[A]]] = Eval.now {
           ctx.get[F](d).flatMap(_.map(c => c.handle(op)).sequence)
         }
 

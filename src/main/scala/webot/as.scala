@@ -1,11 +1,5 @@
 package webot
 
-import java.net.URL
-import cats._
-import free.Free
-import syntax.functor._
-import scala.collection.StringOps
-
 trait As[A] {
   def from(value: String): A
 }

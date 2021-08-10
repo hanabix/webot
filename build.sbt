@@ -14,8 +14,11 @@ lazy val root = (project in file(".")).settings(
     )
   ),
   scalaVersion := "2.13.5",
+  semanticdbEnabled := true,
+  semanticdbVersion := scalafixSemanticdb.revision,
   scalafmtOnCompile := true,
   scalacOptions += "-deprecation",
+  scalacOptions += "-Wunused",
   resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
     "org.seleniumhq.selenium" % "selenium-java"      % "4.0.0-beta-4",

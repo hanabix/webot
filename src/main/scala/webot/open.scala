@@ -1,7 +1,5 @@
 package webot
 
-import cats._
-
 trait Open {
   def apply(df: FExpression[Unit]): Unit = apply { case _ => df }
   def apply(df: PartialFunction[String, FExpression[Unit]]): Unit
