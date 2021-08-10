@@ -1,7 +1,7 @@
 import cats._
-import data._
-import free._
-import syntax.all._
+import cats.data._
+import cats.free._
+import cats.syntax.all._
 
 package object webot {
 
