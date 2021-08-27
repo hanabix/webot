@@ -11,7 +11,7 @@ object Operator {
 
     /** An [[Operator]] to get attribute by name from a [[Subject]].
       *
-      * {{{ a("a.title") get attr("href") }}}
+      * {{{a("a.title") get attr("href")}}}
       *
       * @param name
       * @return
@@ -20,7 +20,7 @@ object Operator {
 
     /** An [[Operator]] to get text from a [[Subject]].
       *
-      * {{{ a("span.content") get text  }}}
+      * {{{a("span.content") get text}}}
       *
       * @return
       */
@@ -28,7 +28,7 @@ object Operator {
 
     /** An [[Operator]] to input a value to a [[Subject]].
       *
-      * {{{ a("input.username") apply input("rock") }}}
+      * {{{a("input.username") apply input("rock")}}}
       *
       * @param value
       * @return
@@ -37,7 +37,7 @@ object Operator {
 
     /** An [[Operator]] to hover mouse on a [[Subject]].
       *
-      * {{{ a("a.link") apply hover }}}
+      * {{{a("a.link") apply hover}}}
       *
       * @return
       */

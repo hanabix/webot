@@ -62,7 +62,7 @@ object Expression {
 
     /** Get one element by [[Scoped]] descriptor in current [[Context]].
       *
-      * {{{ a(g"a.link") }}}
+      * {{{a(g"a.link")}}}
       *
       * Get one element tag named `a` and decorated by class `link` in global search context.
       *
