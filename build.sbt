@@ -1,7 +1,7 @@
 lazy val root = (project in file(".")).settings(
-  name := "webot",
+  name         := "webot",
   organization := "com.github.zhongl",
-  homepage := Some(url("https://github.com/hanabix/webot")),
+  homepage     := Some(url("https://github.com/hanabix/webot")),
   licenses := List(
     "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
   ),
@@ -13,7 +13,7 @@ lazy val root = (project in file(".")).settings(
       url("https://github.com/zhongl")
     )
   ),
-  scalaVersion := "2.13.5",
+  scalaVersion      := "2.13.5",
   semanticdbEnabled := true,
   semanticdbVersion := scalafixSemanticdb.revision,
   scalafmtOnCompile := true,
