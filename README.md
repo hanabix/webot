@@ -15,7 +15,7 @@
 > Use [ammonite-repl](http://ammonite.io/) to run the scripts blow:
 
 ```scala
-import $ivy.`com.github.zhongl:webot_2.13:latest.release`, webot._, selenium._
+import $ivy.`com.github.zhongl:webot_2.13:latest.release`, webot.dsl._, selenium._
 
 open("https://baidu.com") apply {
   for {
