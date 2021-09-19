@@ -13,7 +13,7 @@ lazy val root = (project in file(".")).settings(
       url("https://github.com/zhongl")
     )
   ),
-  scalaVersion      := "2.13.5",
+  scalaVersion      := "2.13.6",
   semanticdbEnabled := true,
   semanticdbVersion := scalafixSemanticdb.revision,
   scalafmtOnCompile := true,
