@@ -28,7 +28,7 @@ package object webot {
   object dsl extends Operator.Dsl with Expression.Dsl with Control.Dsl with As.Dsl with Open.Dsl {
 
     def output[F[_]: Functor, A](fa: F[A]): Unit = { fa.map(println); () }
-    def output(values: Any*): Unit = println(values.mkString(", "))
+    def output(values: Any*): Unit               = println(values.mkString(", "))
 
     def a(descriptor: String): Strict[Id] with Loose[Option] = a(Local(descriptor))
 

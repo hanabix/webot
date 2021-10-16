@@ -24,8 +24,8 @@ lazy val root = (project in file(".")).settings(
     "org.seleniumhq.selenium" % "selenium-java"      % "4.0.0-rc-1",
     "com.lihaoyi"             % "ammonite"           % "2.4.0" cross CrossVersion.full,
     "org.typelevel"          %% "cats-free"          % "2.6.1",
-    "org.scalactic"          %% "scalactic"          % "3.2.9",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.10" % Test,
+    "org.scalactic"          %% "scalactic"          % "3.2.10",
     "org.scalamock"          %% "scalamock"          % "5.1.0" % Test
   )
 )
