@@ -10,7 +10,7 @@ addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
 
 addSbtPlugin("com.artima.supersafe" % "sbtplugin" % "1.1.12")
 
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.10")
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.11")
 
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
 
