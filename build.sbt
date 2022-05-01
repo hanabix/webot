@@ -25,7 +25,7 @@ lazy val root = (project in file(".")).settings(
     "com.lihaoyi"             % "ammonite"           % "2.5.2" cross CrossVersion.full,
     "org.typelevel"          %% "cats-free"          % "2.7.0",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.11" % Test,
-    "org.scalactic"          %% "scalactic"          % "3.2.11",
+    "org.scalactic"          %% "scalactic"          % "3.2.12",
     "org.scalamock"          %% "scalamock"          % "5.2.0"  % Test
   )
 )
