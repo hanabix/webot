@@ -22,7 +22,7 @@ lazy val root = (project in file(".")).settings(
   resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
     "org.seleniumhq.selenium" % "selenium-java"      % "4.5.0",
-    "com.lihaoyi"             % "ammonite"           % "2.5.4" cross CrossVersion.full,
+    "com.lihaoyi"             % "ammonite"           % "2.5.5" cross CrossVersion.full,
     "org.typelevel"          %% "cats-free"          % "2.8.0",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.13" % Test,
     "org.scalactic"          %% "scalactic"          % "3.2.13",
