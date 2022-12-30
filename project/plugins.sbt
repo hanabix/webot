@@ -1,6 +1,6 @@
 resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases"
 
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.6")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.6")
 
