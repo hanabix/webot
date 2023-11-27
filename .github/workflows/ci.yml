@@ -11,7 +11,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: coursier/setup-action@v1
       - name: branch-names
         id: branch-name
