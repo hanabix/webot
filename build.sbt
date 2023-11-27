@@ -21,11 +21,11 @@ lazy val root = (project in file(".")).settings(
   scalacOptions += "-Wunused",
   resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
-    "org.seleniumhq.selenium" % "selenium-java"      % "4.5.3",
-    "com.lihaoyi"             % "ammonite"           % "2.5.5" cross CrossVersion.full,
-    "org.typelevel"          %% "cats-free"          % "2.9.0",
+    "org.seleniumhq.selenium" % "selenium-java"      % "4.13.0",
+    "com.lihaoyi"             % "ammonite"           % "2.5.11" cross CrossVersion.full,
+    "org.typelevel"          %% "cats-free"          % "2.10.0",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.17" % Test,
-    "org.scalactic"          %% "scalactic"          % "3.2.14",
+    "org.scalactic"          %% "scalactic"          % "3.2.17",
     "org.scalamock"          %% "scalamock"          % "5.2.0"  % Test
   )
 )
