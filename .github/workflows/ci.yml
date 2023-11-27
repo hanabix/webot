@@ -15,7 +15,7 @@ jobs:
       - uses: coursier/setup-action@v1
       - name: branch-names
         id: branch-name
-        uses: tj-actions/branch-names@v2.2
+        uses: tj-actions/branch-names@v7
       - run: sbt coverage +test coverageReport
       - run: sbt coveralls
         env:
