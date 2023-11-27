@@ -6,16 +6,16 @@ trait As[A] {
 object As {
   def apply[A](implicit ins: As[A]): As[A] = ins
 
-  implicit val asBoolean = new As[Boolean] {
+  implicit val asBoolean: As[Boolean] = new As[Boolean] {
     def from(value: String) = value.toBoolean
   }
-  implicit val asByte = new As[Byte] {
+  implicit val asByte: As[Byte] = new As[Byte] {
     def from(value: String) = value.toByte
   }
-  implicit val asInt = new As[Int] {
+  implicit val asInt: As[Int] = new As[Int] {
     def from(value: String) = value.toInt
   }
-  implicit val asDouble = new As[Double] {
+  implicit val asDouble: As[Double] = new As[Double] {
     def from(value: String) = value.toDouble
   }
 

@@ -13,7 +13,7 @@ lazy val root = (project in file(".")).settings(
       url("https://github.com/zhongl")
     )
   ),
-  scalaVersion      := "2.13.8",
+  scalaVersion      := "2.13.12",
   semanticdbEnabled := true,
   semanticdbVersion := scalafixSemanticdb.revision,
   scalafmtOnCompile := true,
@@ -21,7 +21,7 @@ lazy val root = (project in file(".")).settings(
   scalacOptions += "-Wunused",
   resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases",
   libraryDependencies ++= Seq(
-    "org.seleniumhq.selenium" % "selenium-java"      % "4.13.0",
+    "org.seleniumhq.selenium" % "selenium-java"      % "4.15.0",
     "com.lihaoyi"             % "ammonite"           % "2.5.11" cross CrossVersion.full,
     "org.typelevel"          %% "cats-free"          % "2.10.0",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.17" % Test,

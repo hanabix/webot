@@ -11,8 +11,8 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: olafurpg/setup-scala@v13
+      - uses: actions/checkout@v2
+      - uses: coursier/setup-action@v1
       - name: branch-names
         id: branch-name
         uses: tj-actions/branch-names@v2.2
