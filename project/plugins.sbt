@@ -6,7 +6,7 @@ addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.9")
 
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.3.11")
 
-addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
+addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.0.1")
 
 addSbtPlugin("com.artima.supersafe" % "sbtplugin" % "1.1.12")
 
