@@ -26,6 +26,6 @@ lazy val root = (project in file(".")).settings(
     "org.typelevel"          %% "cats-free"          % "2.10.0",
     "org.scalatest"          %% "scalatest-wordspec" % "3.2.17" % Test,
     "org.scalactic"          %% "scalactic"          % "3.2.17",
-    "org.scalamock"          %% "scalamock"          % "5.2.0"  % Test
+    "org.scalamock"          %% "scalamock"          % "6.2.0"  % Test
   )
 )
