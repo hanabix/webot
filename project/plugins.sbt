@@ -10,4 +10,4 @@ addSbtPlugin("com.artima.supersafe" % "sbtplugin" % "1.1.12")
 
 addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.12")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.2")
